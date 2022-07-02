@@ -87,17 +87,14 @@ class ImgFrame(QFrame):
             self.master.removeImg(self)
             drag.exec()
 
-    # def mousePressEvent(self, a0: QMouseEvent) -> None:
-    #    return super().mousePressEvent(a0)
-
-    def dragEnterEvent(self, a0) -> None:
-        print('c')
-
-    def dragMoveEvent(self, a0) -> None:
-        print('d')
-
-    def dragLeaveEvent(self, a0) -> None:
-        print('e')
+    # def dragEnterEvent(self, a0) -> None:
+    #    print('c')
+#
+    # def dragMoveEvent(self, a0) -> None:
+    #    print('d')
+#
+    # def dragLeaveEvent(self, a0) -> None:
+    #    print('e')
 
 
 class ImgGroupFrame(QFrame):
@@ -153,15 +150,15 @@ class ImgGroupFrame(QFrame):
     def removeImg(self, img: ImgFrame) -> None:
         self.ui.horizontalLayout_2.removeWidget(img)
         self.images.remove(img)
-        images = [self.ui.horizontalLayout_2.itemAt(i).widget(
-        ) for i in range(self.ui.horizontalLayout_2.count() - 1)]
-        if len(images) > len(self.images):
-            for image in images:
-                if not image in self.images:
-                    self.ui.horizontalLayout_2.removeWidget(image)
-        with open('test.log', 'a') as file:
-            file.write(
-                f"self.images: {len(self.images)}, images: {len(images)}\n")
+        # images = [self.ui.horizontalLayout_2.itemAt(i).widget(
+        # ) for i in range(self.ui.horizontalLayout_2.count() - 1)]
+        # if len(images) > len(self.images):
+        #    for image in images:
+        #        if not image in self.images:
+        #            self.ui.horizontalLayout_2.removeWidget(image)
+        # with open('test.log', 'a') as file:
+        #    file.write(
+        #        f"self.images: {len(self.images)}, images: {len(images)}\n")
 
 
 class Stimulus(QMainWindow, MainWindow):
