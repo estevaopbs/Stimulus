@@ -11,7 +11,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 import PIL
 from PIL.ImageQt import ImageQt
 import numpy as np
-
+#from PyQt6 import sip
 
 drag_cache = None
 
@@ -85,6 +85,7 @@ class ImgFrame(QFrame):
             drag.setHotSpot(event.pos())
             # print(self.master.ui.horizontalLayout_2.)
             self.master.removeImg(self)
+            self.deleteLater()
             drag.exec()
 
     # def dragEnterEvent(self, a0) -> None:
@@ -117,6 +118,7 @@ class ImgGroupFrame(QFrame):
         del self.images
         self.master.verticalLayout.removeWidget(self)
         self.master.groups.remove(self)
+        self.deleteLater()
 
     def add_image(self, event) -> None:
         files = QFileDialog.getOpenFileUrls(
@@ -148,6 +150,7 @@ class ImgGroupFrame(QFrame):
             self.ui.horizontalLayout_2.addItem(self.ui.spacerItem)
 
     def removeImg(self, img: ImgFrame) -> None:
+        # sip.delete(img.ui.label)
         self.ui.horizontalLayout_2.removeWidget(img)
         self.images.remove(img)
         # images = [self.ui.horizontalLayout_2.itemAt(i).widget(
