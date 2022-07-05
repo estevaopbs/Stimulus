@@ -1,38 +1,28 @@
-from PyQt6.QtCore import Qt, QUrl, QRect, QCoreApplication, QMetaObject, QMimeData, QSize
+from PyQt6.QtCore import Qt, QUrl, QMimeData, QSize
 from qt_templates.ImgGroup.ImgGroup import Ui_Frame as ImgGroup
 from qt_templates.MainWindow.MainWindow import Ui_MainWindow as MainWindow
-from PyQt6.QtWidgets import QMainWindow, QApplication, QFrame, QFileDialog, QLabel, QPushButton, QSpinBox
-from PyQt6.QtGui import QPixmap, QMouseEvent, QDrag, QPainter
-from qt_templates.ImgFrame.Img import Ui_Form as Img
+from PyQt6.QtWidgets import QMainWindow, QApplication, QFrame, QFileDialog
+from PyQt6.QtGui import QPixmap, QDrag, QPainter, QScreen
+from qt_templates.Img.Img import Ui_Form as Img
 import sys
 import os
 import imghdr
-from PyQt6 import QtCore, QtGui, QtWidgets
-import PIL
-from PIL.ImageQt import ImageQt
-import numpy as np
-#from PyQt6 import sip
+from PyQt6 import sip
+from math import floor
 
 drag_cache = None
+drop_cache = None
 
 
-def QPixmapToArray(pixmap):
-    # Get the size of the current pixmap
-    size = pixmap.size()
-    h = size.width()
-    w = size.height()
-
-    # Get the QImage Item and convert it to a byte string
-    qimg = pixmap.toImage()
-    byte_str = qimg.bits().tobytes()
-
-    # Using the np.frombuffer function to convert the byte string into an np array
-    img = np.frombuffer(byte_str, dtype=np.uint8).reshape((w, h, 4))
-    return img
+def get_id():
+    n = -1
+    while True:
+        n += 1
+        yield n
 
 
 class ImgFrame(QFrame):
-    def __init__(self, image, master):
+    def __init__(self, image, master, id, adress):
         super().__init__()
         self.ui = Img()
         self.ui.setupUi(self)
@@ -43,6 +33,8 @@ class ImgFrame(QFrame):
         self.ui.spinBox.setVisible(False)
         self.ui.pushButton.clicked.connect(self.removeEvent)
         self.ui.pushButton.setText('R')
+        self.id = id
+        self.adress = adress
 
     def setImg(self):
         self.ui.label.setPixmap(self.image)
@@ -56,20 +48,18 @@ class ImgFrame(QFrame):
         self.ui.spinBox.setVisible(False)
 
     def removeEvent(self, event) -> None:
-        self.master.removeImg(self)
+        self.delete()
 
-    def mousePressEvent(self, event) -> None:
-        super().mousePressEvent(event)
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.drag_start_position = event.pos()
+    def delete(self):
+        self.master.removeImg(self)
 
     def mouseMoveEvent(self, event) -> None:
         # TODO - Make the dragged image really transparent
         if event.buttons() & Qt.MouseButton.LeftButton:
             global drag_cache
-            drag_cache = {'master': self.master,
-                          'img': self,
-                          'index': self.master.images.index(self)}
+            drag_cache = {
+                'img': self
+            }
             drag = QDrag(self)
             mimedata = QMimeData()
             mimedata.setImageData(self.image)
@@ -78,49 +68,44 @@ class ImgFrame(QFrame):
             pixmap.fill(Qt.GlobalColor.transparent)
             painter = QPainter(pixmap)
             painter.setOpacity(0.5)
-            painter.drawPixmap(QRect(0, 0, 150, 150), self.image)
-            painter.drawPixmap(self.rect(), pixmap)
+            painter.drawPixmap(self.rect(), self.image)
             painter.end()
             drag.setPixmap(pixmap)
             drag.setHotSpot(event.pos())
-            # print(self.master.ui.horizontalLayout_2.)
-            self.master.removeImg(self)
-            self.deleteLater()
             drag.exec()
 
-    # def dragEnterEvent(self, a0) -> None:
-    #    print('c')
-#
-    # def dragMoveEvent(self, a0) -> None:
-    #    print('d')
-#
-    # def dragLeaveEvent(self, a0) -> None:
-    #    print('e')
 
-
-class ImgGroupFrame(QFrame):
-    def __init__(self, index: int, master) -> None:
+class ImgGroupFrame(QFrame, QApplication):
+    def __init__(self, master, id, images=[], name='') -> None:
         super().__init__()
         self.ui = ImgGroup()
         self.ui.setupUi(self)
         self.master = master
+        self.id = id
+        if len(images) > 0:
+            self.pixmaps = [image.image for image in images]
+        self.ui.lineEdit.setText(name)
         self.ui.pushButton.setText("Image")
         self.ui.pushButton_2.setText("Folder")
         self.ui.pushButton_3.setText("Delete")
         self.ui.pushButton_3.clicked.connect(self.delete)
-        self.ui.pushButton.clicked.connect(self.add_image)
-        self.ui.pushButton_2.clicked.connect(self.add_folder)
-        self.images = []
+        self.ui.pushButton.clicked.connect(self.addImg)
+        self.ui.pushButton_2.clicked.connect(self.addFolder)
+        self.setAcceptDrops(True)
+        for n, image in enumerate(images):
+            self.ui.horizontalLayout_2.insertWidget(n, image)
+
+    def update_images(self):
+        self.pixmaps = [image.image for image in self.images()]
+
+    def images(self):
+        return [self.ui.horizontalLayout_2.itemAt(i).widget() for i in range(self.ui.horizontalLayout_2.count() - 1)]
 
     def delete(self, event) -> None:
-        for image in self.images:
-            self.ui.horizontalLayout_2.removeWidget(image)
-        del self.images
-        self.master.verticalLayout.removeWidget(self)
-        self.master.groups.remove(self)
-        self.deleteLater()
+        self.master.removeImgGroupBtn(self)
+        self.update_images()
 
-    def add_image(self, event) -> None:
+    def addImg(self, event) -> None:
         files = QFileDialog.getOpenFileUrls(
             self, "Open File", QUrl("."),
             "Images (*.png *.jpg *.jpeg *.bmp *.gif, *.rgb, *.pgm, *.ppm, *.tiff, *.rast, *.xbm, *.webp, *.exr)")[0]
@@ -128,13 +113,13 @@ class ImgGroupFrame(QFrame):
             images = [QPixmap(file.url().replace('file://', ''))
                       for file in files]
             self.ui.horizontalLayout_2.removeItem(self.ui.spacerItem)
-            for image in images:
-                widget = ImgFrame(image, self)
+            for file, image in zip(files, images):
+                widget = ImgFrame(image, self, self.master.get_id(), file)
                 self.ui.horizontalLayout_2.addWidget(widget)
-                self.images.append(widget)
             self.ui.horizontalLayout_2.addItem(self.ui.spacerItem)
+        self.update_images()
 
-    def add_folder(self, event) -> None:
+    def addFolder(self, event) -> None:
         dir = QFileDialog.getExistingDirectory(self, "Open Directory")
         if dir:
             files = []
@@ -143,43 +128,141 @@ class ImgGroupFrame(QFrame):
                     files.append(file)
             images = [QPixmap(file) for file in files]
             self.ui.horizontalLayout_2.removeItem(self.ui.spacerItem)
-            for image in images:
-                widget = ImgFrame(image, self)
-                self.images.append(widget)
+            for file, image in zip(files, images):
+                widget = ImgFrame(image, self, self.master.get_id(), file)
                 self.ui.horizontalLayout_2.addWidget(widget)
             self.ui.horizontalLayout_2.addItem(self.ui.spacerItem)
+        self.update_images()
 
     def removeImg(self, img: ImgFrame) -> None:
-        # sip.delete(img.ui.label)
+        sip.delete(img.ui.label)
         self.ui.horizontalLayout_2.removeWidget(img)
-        self.images.remove(img)
-        # images = [self.ui.horizontalLayout_2.itemAt(i).widget(
-        # ) for i in range(self.ui.horizontalLayout_2.count() - 1)]
-        # if len(images) > len(self.images):
-        #    for image in images:
-        #        if not image in self.images:
-        #            self.ui.horizontalLayout_2.removeWidget(image)
-        # with open('test.log', 'a') as file:
-        #    file.write(
-        #        f"self.images: {len(self.images)}, images: {len(images)}\n")
+        self.update_images()
+
+    def dragEnterEvent(self, event) -> None:
+        global drag_cache
+        if 'img' in drag_cache:
+            event.accept()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event) -> None:
+        global drag_cache
+        absolute_pos = event.position().x()
+        scroll_relative_pos = absolute_pos + \
+            self.ui.scrollArea.horizontalScrollBar().value() - 9
+        hovering_index = floor(scroll_relative_pos / 156)
+        if hovering_index < 0:
+            hovering_index = 0
+        if hovering_index >= len(self.images()):
+            hovering_index = len(self.images()) - 1
+        if self.ui.horizontalLayout_2.itemAt(hovering_index) is not None and self.ui.horizontalLayout_2.itemAt(hovering_index).widget().id != drag_cache['img'].id:
+            for image in self.images():
+                if image.id == drag_cache['img'].id:
+                    self.removeImg(image)
+            self.ui.horizontalLayout_2.insertWidget(
+                hovering_index, ImgFrame(drag_cache['img'].image, self, drag_cache['img'].id, drag_cache['img'].adress))
+        self.update_images()
+
+    def mouseMoveEvent(self, event) -> None:
+        # TODO - Make the dragged image really transparent
+        if event.buttons() & Qt.MouseButton.LeftButton:
+            global drag_cache
+            drag_cache = {
+                'group': self
+            }
+            drag = QDrag(self)
+            mimedata = QMimeData()
+            drag.setMimeData(mimedata)
+            x = self.geometry().x() + self.master.scrollArea_2.geometry().x() + \
+                self.master.geometry().x()
+            y = self.geometry().y() + self.master.scrollArea_2.geometry().y() + \
+                self.master.geometry().y() - self.master.scrollArea_2.verticalScrollBar().value()
+            width = self.frameGeometry().width()
+            height = self.frameGeometry().height()
+            pixmap = QPixmap(width, height)
+            pixmap.fill(Qt.GlobalColor.transparent)
+            painter = QPainter(pixmap)
+            painter.setOpacity(0.5)
+            painter.drawPixmap(self.rect(), QScreen.grabWindow(
+                self.primaryScreen(), x=x, y=y, width=width, height=height))
+            painter.end()
+            drag.setPixmap(pixmap)
+            drag.setHotSpot(event.pos())
+            drag.exec()
 
 
-class Stimulus(QMainWindow, MainWindow):
+class Stimulus(QMainWindow, MainWindow, QApplication):
     def __init__(self, parent=None):
         super().__init__(parent)
         super().setupUi(self)
-        self.groups = []
-        self.pushButton_6.clicked.connect(self.add_imgbox)
+        self.ids_generator = get_id()
+        self.get_id = lambda: next(self.ids_generator)
+        self.pushButton_6.clicked.connect(self.addImgGroup)
+        self.setWindowTitle("Stimulus")
+        self.scrollArea_2.setAcceptDrops(True)
+        self.scrollArea_2.dragEnterEvent = self.scrollArea2_dragEnterEvent
+        self.scrollArea_2.dragMoveEvent = self.scrollArea2_dragMoveEvent
+        self.delete_on_drag = []
 
-    def add_imgbox(self, event):
+    def groups(self):
+        return [self.verticalLayout.itemAt(i).widget() for i in range(self.verticalLayout.count() - 2)]
+
+    def addImgGroup(self, event):
         self.verticalLayout.removeWidget(self.frame)
         self.verticalLayout.removeItem(self.spacerItem2)
         self.verticalLayout.removeWidget(self.pushButton_6)
-        group = ImgGroupFrame(len(self.groups), self)
-        self.groups.append(group)
+        group = ImgGroupFrame(self, self.get_id())
         self.verticalLayout.addWidget(group)
         self.verticalLayout.addWidget(self.frame)
         self.verticalLayout.addItem(self.spacerItem2)
+
+    def removeImgGroup(self, group: ImgGroupFrame) -> None:
+        for image in group.images():
+            group.removeImg(image)
+        self.verticalLayout.removeWidget(group)
+
+    def removeImgGroupBtn(self, group: ImgGroupFrame) -> None:
+        self.removeImgGroup(group)
+        group.deleteLater()
+
+    def scrollArea2_dragEnterEvent(self, event):
+        global drag_cache
+        if 'group' in drag_cache:
+            event.accept()
+        else:
+            event.ignore()
+
+    def scrollArea2_dragMoveEvent(self, event) -> None:
+        global drag_cache
+        absolute_pos = event.position().y()
+        scroll_relative_pos = absolute_pos + \
+            self.scrollArea_2.verticalScrollBar().value() - 9
+        hovering_index = floor(scroll_relative_pos / 286)
+        if hovering_index < 0:
+            hovering_index = 0
+        if hovering_index >= len(self.groups()):
+            hovering_index = len(self.groups()) - 1
+        self.setWindowTitle(str(self.groups()))
+        if self.verticalLayout.itemAt(hovering_index) is not None and self.verticalLayout.itemAt(hovering_index).widget().id != drag_cache['group'].id:
+            group_id = drag_cache['group'].id
+            name = drag_cache['group'].ui.lineEdit.text()
+            pixmaps = [image.image for image in drag_cache['group'].images()]
+            ids = [image.id for image in drag_cache['group'].images()]
+            files = [image.adress for image in drag_cache['group'].images()]
+            images = [ImgFrame(pixmap, self, id, file)
+                      for pixmap, id, file in zip(pixmaps, ids, files)]
+            for group in self.groups():
+                if group.id == drag_cache['group'].id:
+                    self.removeImgGroup(group)
+            self.verticalLayout.insertWidget(
+                hovering_index, ImgGroupFrame(self, -1, images, name))
+            group = list(filter(lambda group: group.id ==
+                                -1, self.groups()))[0]
+            for image in group.images():
+                image.master = group
+            group.id = group_id
+            drag_cache['group'] = group
 
 
 if __name__ == '__main__':
@@ -187,3 +270,7 @@ if __name__ == '__main__':
     window = Stimulus()
     window.show()
     app.exec()
+
+# TODO: TIRAR VARIAVEIS GLOBAIS
+# TODO: TIRAR VALORES HARD-CODED
+# TODO: DEIXAR DICIONARIO COMO VARIAVEL NORMAL, DESFAZER DICIONARIO
