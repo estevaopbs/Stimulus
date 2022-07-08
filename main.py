@@ -51,6 +51,10 @@ class ImgFrame(QFrame):
         self.ui.spinBox.setRange(0, 999999)
         self.ui.spinBox.setValue(rate)
 
+    @property
+    def rate(self):
+        return self.ui.spinBox.value()
+
     def get_configs(self):
         return {
             'file': self.file,
@@ -148,7 +152,7 @@ class ImgGroupFrame(QFrame, QApplication):
             self, "Open File", QUrl("."),
             "Images (*.png *.jpg *.jpeg *.bmp *.gif, *.rgb, *.pgm, *.ppm, *.tiff, *.rast, *.xbm, *.webp, *.exr)")[0]
         for file in files:
-            self.addImg(ImgFrame(file, self, self.master.get_id()))
+            self.addImg(ImgFrame(file, self.master.get_id(), self))
 
     def addFolderEvent(self, event) -> None:
         dir = QFileDialog.getExistingDirectory(self, "Open Directory")
@@ -157,10 +161,8 @@ class ImgGroupFrame(QFrame, QApplication):
             for file in [os.path.join(dir, file) for file in os.listdir(dir)]:
                 if os.path.isfile(file) and imghdr.what(file):
                     files.append(file)
-            images = [QPixmap(file) for file in files]
-            for file, image in zip(files, images):
-                widget = ImgFrame(file, self, self.master.get_id())
-                self.addImg(widget)
+            for file in files:
+                self.addImg(ImgFrame(file, self.master.get_id(), self))
 
     def removeImg(self, img: ImgFrame) -> None:
         img.hide()
@@ -184,7 +186,7 @@ class ImgGroupFrame(QFrame, QApplication):
         global drag_cache
         if len(self.images()) == 0:
             self.ui.horizontalLayout_2.insertWidget(
-                0, ImgFrame(drag_cache['img'].file, self, drag_cache['img'].id, drag_cache['img'].pixmap))
+                0, ImgFrame(drag_cache['img'].file, drag_cache['img'].id, self, drag_cache['img'].pixmap, drag_cache['img'].rate))
             return
         absolute_pos = event.position().x()
         scroll_relative_pos = absolute_pos + \
@@ -199,7 +201,7 @@ class ImgGroupFrame(QFrame, QApplication):
                 if image.id == drag_cache['img'].id:
                     self.removeImg(image)
             self.ui.horizontalLayout_2.insertWidget(
-                hovering_index, ImgFrame(drag_cache['img'].file, self, drag_cache['img'].id, drag_cache['img'].pixmap))
+                hovering_index, ImgFrame(drag_cache['img'].file, drag_cache['img'].id, self, drag_cache['img'].pixmap, drag_cache['img'].rate))
 
     def mouseMoveEvent(self, event) -> None:
         # TODO - Make the dragged image really transparent
@@ -326,7 +328,7 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
             pixmaps = [image.pixmap for image in drag_cache['group'].images()]
             ids = [image.id for image in drag_cache['group'].images()]
             files = [image.file for image in drag_cache['group'].images()]
-            images = [ImgFrame(file, self, id, pixmap)
+            images = [ImgFrame(file, id, self, pixmap)
                       for pixmap, id, file in zip(pixmaps, ids, files)]
             for group in self.groups():
                 if group.id == drag_cache['group'].id:
@@ -375,14 +377,14 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
             return None
 
     def show_time(self):
-        text = self.lineEdit.text()
+        text = self.lineEdit_2.text()
         if self.lineEdit_2.text():
             return int(text)
         else:
             return None
 
     def interval_time(self):
-        text = self.lineEdit.text()
+        text = self.lineEdit_3.text()
         if self.lineEdit_3.text():
             return int(text)
         else:
@@ -455,8 +457,81 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
                 'Stimulus is not entirely compatible with this operational system.')
         if not os.path.isdir(home_dir / '.Stimulus'):
             os.mkdir(home_dir / '.Stimulus')
-        with open(home_dir/'.Stimulus'/'configs.json', 'w') as file:
+        self.save_settings(home_dir/'.Stimulus/configs.json')
+
+    def save_settings(self, path):
+        with open(path, 'w') as file:
             json.dump(self.get_configs(), file, indent=4)
+
+    def load_settings(self, path):
+        with open(path, 'r') as file:
+            configs = json.load(file)
+
+            # intergroup show order
+            if configs['intergroup_show_order']:
+                filter(lambda x: x.text() == configs['intergroup_show_order'],
+                       self.frame_4.findChildren(QRadioButton)).__next__().setChecked(True)
+
+            # intragroup show order
+            if configs['intragroup_show_order']:
+                filter(lambda x: x.text() == configs['intragroup_show_order'],
+                       self.frame_5.findChildren(QRadioButton)).__next__().setChecked(True)
+
+            # intergroup behaviour
+            if configs['intergroup_behaviour']:
+                filter(lambda x: x.text() == configs['intergroup_behaviour'],
+                       self.frame_6.findChildren(QRadioButton)).__next__().setChecked(True)
+
+            # selection rate behaviour
+            if configs['selection_rate_behaviour']:
+                filter(lambda x: x.text() == configs['selection_rate_behaviour'],
+                       self.frame_7.findChildren(QRadioButton)).__next__().setChecked(True)
+
+            # allow image repetition
+            if configs['allow_image_repetition']:
+                self.checkBox_2.setChecked(True)
+
+            # amount of exhibitions
+            if configs['amount_of_exhibitions']:
+                self.lineEdit.setText(
+                    str(configs['amount_of_exhibitions']))
+
+            # show time
+            if configs['show_time']:
+                self.lineEdit_2.setText(str(configs['show_time']))
+
+            # interval time
+            if configs['interval_time']:
+                self.lineEdit_3.setText(str(configs['interval_time']))
+
+            # test key
+            if configs['test_key']:
+                if isinstance(configs['test_key'], int):
+                    self.test_key_id = configs['test_key']
+                    self.pushButton.setText(QKeySequence(
+                        configs['test_key']).toString())
+                elif isinstance(configs['test_key'], list):
+                    self.test_key_id = QPoint(0, configs['test_key'][1])
+                    if sign(self.test_key_id.y()) == 1:
+                        self.pushButton.setText('ScrollUp')
+                    else:
+                        self.pushButton.setText('ScrollDown')
+                else:
+                    self.test_key_id = Qt.MouseButton[configs['test_key']]
+                    self.pushButton.setText(configs['test_key'])
+
+            # skip on click
+            if configs['skip_on_click']:
+                self.checkBox_3.setChecked(True)
+
+            # images
+            if configs['groups']:
+                for group in configs['groups']:
+                    images = [
+                        ImgFrame(configs['groups'][group]['images'][i]['file'], i, rate=configs['groups'][group]['images'][i]['rate']) for i in configs['groups'][group]['images']
+                    ]
+                    self.addImgGroup(
+                        images, configs['groups'][group]['name'], group, configs['groups'][group]['rate'])
 
     def load_default(self):
         platform = get_sys()
@@ -469,74 +544,7 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
             return
         if os.path.isdir(home_dir/'.Stimulus'):
             if os.path.isfile(home_dir/'.Stimulus/configs.json'):
-                with open(home_dir/'.Stimulus/configs.json', 'r') as file:
-                    configs = json.load(file)
-
-                # intergroup show order
-                if configs['intergroup_show_order']:
-                    filter(lambda x: x.text() == configs['intergroup_show_order'],
-                           self.frame_4.findChildren(QRadioButton)).__next__().setChecked(True)
-
-                # intragroup show order
-                if configs['intragroup_show_order']:
-                    filter(lambda x: x.text() == configs['intragroup_show_order'],
-                           self.frame_5.findChildren(QRadioButton)).__next__().setChecked(True)
-
-                # intergroup behaviour
-                if configs['intergroup_behaviour']:
-                    filter(lambda x: x.text() == configs['intergroup_behaviour'],
-                           self.frame_6.findChildren(QRadioButton)).__next__().setChecked(True)
-
-                # selection rate behaviour
-                if configs['selection_rate_behaviour']:
-                    filter(lambda x: x.text() == configs['selection_rate_behaviour'],
-                           self.frame_7.findChildren(QRadioButton)).__next__().setChecked(True)
-
-                # allow image repetition
-                if configs['allow_image_repetition']:
-                    self.checkBox_2.setChecked(True)
-
-                # amount of exhibitions
-                if configs['amount_of_exhibitions']:
-                    self.lineEdit.setText(
-                        str(configs['amount_of_exhibitions']))
-
-                # show time
-                if configs['show_time']:
-                    self.lineEdit_2.setText(str(configs['show_time']))
-
-                # interval time
-                if configs['interval_time']:
-                    self.lineEdit_3.setText(str(configs['interval_time']))
-
-                # test key
-                if configs['test_key']:
-                    if isinstance(configs['test_key'], int):
-                        self.test_key_id = configs['test_key']
-                        self.pushButton.setText(QKeySequence(
-                            configs['test_key']).toString())
-                    elif isinstance(configs['test_key'], list):
-                        self.test_key_id = QPoint(0, configs['test_key'][1])
-                        if sign(self.test_key_id.y()) == 1:
-                            self.pushButton.setText('ScrollUp')
-                        else:
-                            self.pushButton.setText('ScrollDown')
-                    else:
-                        self.test_key_id = Qt.MouseButton[configs['test_key']]
-                        self.pushButton.setText(configs['test_key'])
-
-                # skip on click
-                if configs['allow_image_repetition']:
-                    self.checkBox_3.setChecked(True)
-
-                # images
-                if configs['groups']:
-                    for group in configs['groups']:
-                        images = [
-                            ImgFrame(configs['groups'][group]['images'][i]['file'], i, rate=configs['groups'][group]['images'][i]['rate']) for i in configs['groups'][group]['images']
-                        ]
-                        self.addImgGroup(
-                            images, configs['groups'][group]['name'], group, configs['groups'][group]['rate'])
+                self.load_settings(home_dir/'.Stimulus/configs.json')
 
 
 if __name__ == '__main__':
