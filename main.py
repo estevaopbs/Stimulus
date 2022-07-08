@@ -35,30 +35,32 @@ def get_id():
 
 
 class ImgFrame(QFrame):
-    def __init__(self, image, master, id, address):
+    def __init__(self, file, id, master=None, pixmap=None, rate=1):
         super().__init__()
         self.ui = Img()
         self.ui.setupUi(self)
         self.master = master
-        self.image = image
+        self.pixmap = pixmap
+        self.file = file
+        self.id = id
         self.setImg()
         self.ui.pushButton.setVisible(False)
         self.ui.spinBox.setVisible(False)
         self.ui.pushButton.clicked.connect(self.removeEvent)
         self.ui.pushButton.setText('R')
-        self.id = id
-        self.address = address
         self.ui.spinBox.setRange(0, 999999)
-        self.ui.spinBox.setValue(1)
+        self.ui.spinBox.setValue(rate)
 
     def get_configs(self):
         return {
-            'file': self.address,
+            'file': self.file,
             'rate': self.ui.spinBox.value()
         }
 
     def setImg(self):
-        self.ui.label.setPixmap(self.image)
+        if not self.pixmap:
+            self.pixmap = QPixmap(self.file)
+        self.ui.label.setPixmap(self.pixmap)
 
     def enterEvent(self, event) -> None:
         self.ui.pushButton.setVisible(True)
@@ -69,6 +71,9 @@ class ImgFrame(QFrame):
         self.ui.spinBox.setVisible(False)
 
     def removeEvent(self, event) -> None:
+        master_images = self.master.images()
+        if len(master_images) > 1:
+            master_images[master_images.index(self) + 1].enterEvent(None)
         self.delete()
 
     def delete(self):
@@ -83,13 +88,13 @@ class ImgFrame(QFrame):
             }
             drag = QDrag(self)
             mimedata = QMimeData()
-            mimedata.setImageData(self.image)
+            mimedata.setImageData(self.pixmap)
             drag.setMimeData(mimedata)
             pixmap = QPixmap(QSize(150, 150))
             pixmap.fill(Qt.GlobalColor.transparent)
             painter = QPainter(pixmap)
             painter.setOpacity(0.5)
-            painter.drawPixmap(self.rect(), self.image)
+            painter.drawPixmap(self.rect(), self.pixmap)
             painter.end()
             drag.setPixmap(pixmap)
             drag.setHotSpot(event.pos())
@@ -103,18 +108,17 @@ class ImgGroupFrame(QFrame, QApplication):
         self.ui.setupUi(self)
         self.master = master
         self.id = id
-        if len(images) > 0:
-            self.pixmaps = [image.image for image in images]
         self.ui.lineEdit.setText(name)
         self.ui.pushButton.setText("Image")
         self.ui.pushButton_2.setText("Folder")
         self.ui.pushButton_3.setText("Delete")
         self.ui.pushButton_3.clicked.connect(self.delete)
-        self.ui.pushButton.clicked.connect(self.addImg)
-        self.ui.pushButton_2.clicked.connect(self.addFolder)
+        self.ui.pushButton.clicked.connect(self.addImgEvent)
+        self.ui.pushButton_2.clicked.connect(self.addFolderEvent)
         self.setAcceptDrops(True)
         for n, image in enumerate(images):
             self.ui.horizontalLayout_2.insertWidget(n, image)
+            image.master = self
         self.ui.spinBox.setRange(0, 999999)
         self.ui.spinBox.setValue(1)
 
@@ -129,34 +133,24 @@ class ImgGroupFrame(QFrame, QApplication):
             'images': {image.id: image.get_configs() for image in self.images()}
         }
 
-    def update_images(self):
-        images = self.images()
-        images = list(
-            filter(lambda x: isinstance(x, ImgFrame), images))
-        self.pixmaps = [image.image for image in images]
-
     def images(self):
         return [self.ui.horizontalLayout_2.itemAt(i).widget() for i in range(self.ui.horizontalLayout_2.count() - 1)]
 
     def delete(self, event) -> None:
         self.master.removeImgGroupBtn(self)
-        self.update_images()
 
-    def addImg(self, event) -> None:
+    def addImg(self, image: ImgFrame) -> None:
+        self.ui.horizontalLayout_2.insertWidget(
+            self.ui.horizontalLayout_2.count() - 1, image)
+
+    def addImgEvent(self, event) -> None:
         files = QFileDialog.getOpenFileUrls(
             self, "Open File", QUrl("."),
             "Images (*.png *.jpg *.jpeg *.bmp *.gif, *.rgb, *.pgm, *.ppm, *.tiff, *.rast, *.xbm, *.webp, *.exr)")[0]
-        if files:
-            images = [QPixmap(file.url().replace('file://', ''))
-                      for file in files]
-            self.ui.horizontalLayout_2.removeItem(self.ui.spacerItem)
-            for file, image in zip(files, images):
-                widget = ImgFrame(image, self, self.master.get_id(), file)
-                self.ui.horizontalLayout_2.addWidget(widget)
-            self.ui.horizontalLayout_2.addItem(self.ui.spacerItem)
-        self.update_images()
+        for file in files:
+            self.addImg(ImgFrame(file, self, self.master.get_id()))
 
-    def addFolder(self, event) -> None:
+    def addFolderEvent(self, event) -> None:
         dir = QFileDialog.getExistingDirectory(self, "Open Directory")
         if dir:
             files = []
@@ -164,18 +158,13 @@ class ImgGroupFrame(QFrame, QApplication):
                 if os.path.isfile(file) and imghdr.what(file):
                     files.append(file)
             images = [QPixmap(file) for file in files]
-            self.ui.horizontalLayout_2.removeItem(self.ui.spacerItem)
             for file, image in zip(files, images):
-                widget = ImgFrame(image, self, self.master.get_id(), file)
-                self.ui.horizontalLayout_2.addWidget(widget)
-            self.ui.horizontalLayout_2.addItem(self.ui.spacerItem)
-        self.update_images()
+                widget = ImgFrame(file, self, self.master.get_id())
+                self.addImg(widget)
 
     def removeImg(self, img: ImgFrame) -> None:
-        # sip.delete(img.ui.label)
         img.hide()
         self.ui.horizontalLayout_2.removeWidget(img)
-        self.update_images()
 
     def dragEnterEvent(self, event) -> None:
         global drag_cache
@@ -195,8 +184,7 @@ class ImgGroupFrame(QFrame, QApplication):
         global drag_cache
         if len(self.images()) == 0:
             self.ui.horizontalLayout_2.insertWidget(
-                0, ImgFrame(drag_cache['img'].image, self, drag_cache['img'].id, drag_cache['img'].address))
-            self.update_images()
+                0, ImgFrame(drag_cache['img'].file, self, drag_cache['img'].id, drag_cache['img'].pixmap))
             return
         absolute_pos = event.position().x()
         scroll_relative_pos = absolute_pos + \
@@ -211,8 +199,7 @@ class ImgGroupFrame(QFrame, QApplication):
                 if image.id == drag_cache['img'].id:
                     self.removeImg(image)
             self.ui.horizontalLayout_2.insertWidget(
-                hovering_index, ImgFrame(drag_cache['img'].image, self, drag_cache['img'].id, drag_cache['img'].address))
-        self.update_images()
+                hovering_index, ImgFrame(drag_cache['img'].file, self, drag_cache['img'].id, drag_cache['img'].pixmap))
 
     def mouseMoveEvent(self, event) -> None:
         # TODO - Make the dragged image really transparent
@@ -272,7 +259,6 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
     def keyPressEvent(self, event: QKeyEvent) -> None:
         super().keyPressEvent(event)
         if self.settingtestkey:
-            # self.pushButton.setFocus()
             self.pushButton.setDown(False)
             self.pushButton.setDisabled(False)
             self.pushButton.setStyleSheet("background-color: none;")
@@ -337,10 +323,10 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
         if self.verticalLayout.itemAt(hovering_index) is not None and self.verticalLayout.itemAt(hovering_index).widget().id != drag_cache['group'].id:
             group_id = drag_cache['group'].id
             name = drag_cache['group'].ui.lineEdit.text()
-            pixmaps = [image.image for image in drag_cache['group'].images()]
+            pixmaps = [image.pixmap for image in drag_cache['group'].images()]
             ids = [image.id for image in drag_cache['group'].images()]
-            files = [image.address for image in drag_cache['group'].images()]
-            images = [ImgFrame(pixmap, self, id, file)
+            files = [image.file for image in drag_cache['group'].images()]
+            images = [ImgFrame(file, self, id, pixmap)
                       for pixmap, id, file in zip(pixmaps, ids, files)]
             for group in self.groups():
                 if group.id == drag_cache['group'].id:
@@ -353,7 +339,6 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
                 image.master = group
             group.id = group_id
             drag_cache['group'] = group
-        # self.setWindowTitle(self.intragroup_show_order())
 
     def intergroup_show_order(self):
         widgets = list(filter(lambda x: x.isChecked(),
@@ -436,7 +421,6 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
     def mousePressEvent(self, event: QMouseEvent) -> None:
         super().mousePressEvent(event)
         if self.settingtestkey:
-            # self.pushButton.setFocus()
             self.pushButton.setDown(False)
             self.pushButton.setDisabled(False)
             self.pushButton.setStyleSheet("background-color: none;")
@@ -449,7 +433,6 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
     def wheelEvent(self, event: QWheelEvent) -> None:
         super().wheelEvent(event)
         if self.settingtestkey:
-            # self.pushButton.setFocus()
             self.pushButton.setDown(False)
             self.pushButton.setDisabled(False)
             self.pushButton.setStyleSheet("background-color: none;")
@@ -527,7 +510,6 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
                     self.lineEdit_3.setText(str(configs['interval_time']))
 
                 # test key
-                print(type(configs['test_key']))
                 if configs['test_key']:
                     if isinstance(configs['test_key'], int):
                         self.test_key_id = configs['test_key']
@@ -540,13 +522,21 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
                         else:
                             self.pushButton.setText('ScrollDown')
                     else:
-                        print('a')
                         self.test_key_id = Qt.MouseButton[configs['test_key']]
                         self.pushButton.setText(configs['test_key'])
 
                 # skip on click
                 if configs['allow_image_repetition']:
                     self.checkBox_3.setChecked(True)
+
+                # images
+                if configs['groups']:
+                    for group in configs['groups']:
+                        images = [
+                            ImgFrame(configs['groups'][group]['images'][i]['file'], i, rate=configs['groups'][group]['images'][i]['rate']) for i in configs['groups'][group]['images']
+                        ]
+                        self.addImgGroup(
+                            images, configs['groups'][group]['name'], group, configs['groups'][group]['rate'])
 
 
 if __name__ == '__main__':
