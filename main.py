@@ -583,17 +583,19 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
 
     def saveSettingsEvent(self, event):
         path = QFileDialog.getSaveFileName(
-            self, 'Save Settings', '', '*.json')[0]
-        if not path.endswith('.json'):
-            path += '.json'
-        self.save_settings(path)
+            self, 'Save Settings', '', '*.json')
+        if len(path) == 1:
+            if not path.endswith('.json'):
+                path += '.json'
+            self.save_settings(path[0])
 
     def loadSettingsEvent(self, event):
-        for group in self.groups():
-            self.removeImgGroup(group)
         path = QFileDialog.getOpenFileName(
-            self, 'Load Settings', '', '*.json')[0]
-        self.load_settings(path)
+            self, 'Load Settings', '', '*.json')
+        if len(path) == 1:
+            for group in self.groups():
+                self.removeImgGroup(group)
+            self.load_settings(path[0])
 
 
 if __name__ == '__main__':
