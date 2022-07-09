@@ -11,10 +11,8 @@ import os
 import imghdr
 from math import floor
 import json
-from pprint import pprint
 
 drag_cache = None
-drop_cache = None
 
 
 def get_sys():
@@ -607,4 +605,3 @@ if __name__ == '__main__':
 # TODO: TIRAR VARIAVEIS GLOBAIS
 # TODO: TIRAR VALORES HARD-CODED
 # TODO: DEIXAR DICIONARIO COMO VARIAVEL NORMAL, DESFAZER DICIONARIO
-# TODO: ADICIONAR CLEAR BUTTONS
