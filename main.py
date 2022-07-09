@@ -3,7 +3,7 @@ from PyQt6.QtCore import Qt, QUrl, QMimeData, QSize, QPoint
 from numpy import sign
 from qt_templates.ImgGroup.ImgGroup import Ui_Frame as ImgGroup
 from qt_templates.MainWindow.MainWindow import Ui_MainWindow as MainWindow
-from PyQt6.QtWidgets import QMainWindow, QApplication, QFrame, QFileDialog, QRadioButton, QLineEdit
+from PyQt6.QtWidgets import QMainWindow, QApplication, QFrame, QFileDialog, QRadioButton, QLineEdit, QCheckBox, QButtonGroup
 from PyQt6.QtGui import QPixmap, QDrag, QPainter, QScreen, QIntValidator, QKeyEvent, QKeySequence, QMouseEvent, QWheelEvent
 from qt_templates.Img.Img import Ui_Form as Img
 import sys
@@ -251,6 +251,41 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
         for lineEdit in self.findChildren(QLineEdit):
             lineEdit.setValidator(self.onlyInt)
         self.load_default()
+        self.buttonGroup = QButtonGroup()
+        self.buttonGroup_2 = QButtonGroup()
+        self.buttonGroup_3 = QButtonGroup()
+        self.buttonGroup_4 = QButtonGroup()
+        self.buttonGroup.addButton(self.radioButton)
+        self.buttonGroup.addButton(self.radioButton_2)
+        self.buttonGroup_2.addButton(self.radioButton_3)
+        self.buttonGroup_2.addButton(self.radioButton_4)
+        self.buttonGroup_3.addButton(self.radioButton_5)
+        self.buttonGroup_3.addButton(self.radioButton_6)
+        self.buttonGroup_4.addButton(self.radioButton_7)
+        self.buttonGroup_4.addButton(self.radioButton_8)
+        self.buttonGroups = [self.buttonGroup, self.buttonGroup_2,
+                             self.buttonGroup_3, self.buttonGroup_4]
+        self.pushButton_2.clicked.connect(self.saveSettingsEvent)
+        self.pushButton_3.clicked.connect(self.loadSettingsEvent)
+        self.pushButton_7.clicked.connect(self.clear)
+
+    def clear(self):
+        for group in self.groups():
+            self.removeImgGroup(group)
+        for buttonGroup in self.buttonGroups:
+            buttonGroup.setExclusive(False)
+        for radio_button in [self.radioButton, self.radioButton_2,
+                             self.radioButton_3, self.radioButton_4,
+                             self.radioButton_5, self.radioButton_6,
+                             self.radioButton_7, self.radioButton_8]:
+            radio_button.setChecked(False)
+        for buttonGroup in self.buttonGroups:
+            buttonGroup.setExclusive(True)
+        for child in self.findChildren(QCheckBox):
+            child.setChecked(False)
+        for child in self.findChildren(QLineEdit):
+            child.setText('')
+        self.pushButton.setText('Click to set')
 
     def TestKeyEvent(self, event):
         self.pushButton.setDown(True)
@@ -457,7 +492,7 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
                 'Stimulus is not entirely compatible with this operational system.')
         if not os.path.isdir(home_dir / '.Stimulus'):
             os.mkdir(home_dir / '.Stimulus')
-        self.save_settings(home_dir/'.Stimulus/configs.json')
+        self.save_settings(home_dir/'.Stimulus/default.json')
 
     def save_settings(self, path):
         with open(path, 'w') as file:
@@ -543,8 +578,22 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
         else:
             return
         if os.path.isdir(home_dir/'.Stimulus'):
-            if os.path.isfile(home_dir/'.Stimulus/configs.json'):
-                self.load_settings(home_dir/'.Stimulus/configs.json')
+            if os.path.isfile(home_dir/'.Stimulus/default.json'):
+                self.load_settings(home_dir/'.Stimulus/default.json')
+
+    def saveSettingsEvent(self, event):
+        path = QFileDialog.getSaveFileName(
+            self, 'Save Settings', '', '*.json')[0]
+        if not path.endswith('.json'):
+            path += '.json'
+        self.save_settings(path)
+
+    def loadSettingsEvent(self, event):
+        for group in self.groups():
+            self.removeImgGroup(group)
+        path = QFileDialog.getOpenFileName(
+            self, 'Load Settings', '', '*.json')[0]
+        self.load_settings(path)
 
 
 if __name__ == '__main__':
