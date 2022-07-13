@@ -3,4 +3,5 @@ __pycache__
 *.ui
 venv
 test_imgs
-old_files
+old_files'
+test.py

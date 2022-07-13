@@ -3,7 +3,7 @@ from PyQt6.QtCore import Qt, QUrl, QMimeData, QSize, QPoint
 from numpy import sign
 from qt_templates.ImgGroup.ImgGroup import Ui_Frame as ImgGroup
 from qt_templates.MainWindow.MainWindow import Ui_MainWindow as MainWindow
-from PyQt6.QtWidgets import QMainWindow, QApplication, QFrame, QFileDialog, QRadioButton, QLineEdit, QCheckBox, QButtonGroup
+from PyQt6.QtWidgets import QMainWindow, QApplication, QFrame, QFileDialog, QRadioButton, QLineEdit, QCheckBox, QButtonGroup, QMessageBox
 from PyQt6.QtGui import QPixmap, QDrag, QPainter, QScreen, QIntValidator, QKeyEvent, QKeySequence, QMouseEvent, QWheelEvent
 from qt_templates.Img.Img import Ui_Form as Img
 import sys
@@ -11,6 +11,9 @@ import os
 import imghdr
 from math import floor
 import json
+from select_images import SelectImages
+from pprint import pprint
+
 
 drag_cache = None
 
@@ -124,6 +127,9 @@ class ImgGroupFrame(QFrame, QApplication):
         self.ui.spinBox.setRange(0, 999999)
         self.ui.spinBox.setValue(1)
 
+    def rate(self) -> int:
+        return self.ui.spinBox.value()
+
     @property
     def name(self):
         return self.ui.lineEdit.text()
@@ -150,7 +156,8 @@ class ImgGroupFrame(QFrame, QApplication):
             self, "Open File", QUrl("."),
             "Images (*.png *.jpg *.jpeg *.bmp *.gif, *.rgb, *.pgm, *.ppm, *.tiff, *.rast, *.xbm, *.webp, *.exr)")[0]
         for file in files:
-            self.addImg(ImgFrame(file, self.master.get_id(), self))
+            self.addImg(ImgFrame(file.url().replace(
+                'file://', ''), self.master.get_id(), self))
 
     def addFolderEvent(self, event) -> None:
         dir = QFileDialog.getExistingDirectory(self, "Open Directory")
@@ -266,6 +273,9 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
         self.pushButton_2.clicked.connect(self.saveSettingsEvent)
         self.pushButton_3.clicked.connect(self.loadSettingsEvent)
         self.pushButton_7.clicked.connect(self.clear)
+        for screen in self.screens():
+            self.comboBox.addItem(screen.name())
+        self.pushButton_4.clicked.connect(self.startEvent)
 
     def clear(self):
         for group in self.groups():
@@ -310,7 +320,7 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
                     text = "AltGr"
                 case 16777250:
                     text = "Winkey"
-                case default:
+                case _:
                     text = QKeySequence(key).toString()
             self.pushButton.setText(text)
             self.test_key_id = key
@@ -399,7 +409,7 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
         if widgets:
             return widgets[0].text()
 
-    def allow_image_repetition(self):
+    def allow_image_repeat(self):
         return self.checkBox_2.isChecked()
 
     def amount_of_exhibitions(self):
@@ -429,6 +439,9 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
     def skip_on_click(self):
         return self.checkBox_3.isChecked()
 
+    def screen_(self):
+        return self.comboBox.currentText()
+
     def get_configs(self):
         if isinstance(self.test_key_id, Qt.MouseButton):
             test_key_id = self.test_key_id.name
@@ -444,7 +457,8 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
             'intragroup_show_order': self.intragroup_show_order(),
             'intergroup_behaviour': self.intergroup_behaviour(),
             'selection_rate_behaviour': self.selection_rate_behaviour(),
-            'allow_image_repetition': self.allow_image_repetition(),
+            'screen': self.screen_(),
+            'allow_image_repeat': self.allow_image_repeat(),
             'amount_of_exhibitions': self.amount_of_exhibitions(),
             'show_time': self.show_time(),
             'interval_time': self.interval_time(),
@@ -520,8 +534,15 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
                 filter(lambda x: x.text() == configs['selection_rate_behaviour'],
                        self.frame_7.findChildren(QRadioButton)).__next__().setChecked(True)
 
-            # allow image repetition
-            if configs['allow_image_repetition']:
+            # screen
+            if configs['screen']:
+                items = [self.comboBox.itemText(
+                    n) for n in range(self.comboBox.count())]
+                if configs['screen'] in items:
+                    self.comboBox.setCurrentText(configs['screen'])
+
+            # allow image repeat
+            if configs['allow_image_repeat']:
                 self.checkBox_2.setChecked(True)
 
             # amount of exhibitions
@@ -595,6 +616,9 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
                 self.removeImgGroup(group)
             self.load_settings(path[0])
 
+    def startEvent(self, event):
+        pprint(list(SelectImages(self.get_configs()).run()))
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
@@ -605,3 +629,8 @@ if __name__ == '__main__':
 # TODO: TIRAR VARIAVEIS GLOBAIS
 # TODO: TIRAR VALORES HARD-CODED
 # TODO: DEIXAR DICIONARIO COMO VARIAVEL NORMAL, DESFAZER DICIONARIO
+# TODO: DEIXAR O CODIGO MAIS LIMPO
+# TODO: FAZER CLASSES COM HERANÇA
+# TODO: CONSERTAR TAB
+# TODO: ADICIONAR SUPORTE PRA TELA SECUNDÁRIA
+# TODO: ESTILIZAÇÂO COM CSS
