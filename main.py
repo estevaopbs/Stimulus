@@ -12,7 +12,7 @@ import imghdr
 from math import floor
 import json
 from select_images import SelectImages
-from pprint import pprint
+from itertools import chain
 
 
 drag_cache = None
@@ -28,8 +28,7 @@ def get_sys():
             return 'windows'
 
 
-def get_id():
-    n = 0
+def get_id(n=0):
     while True:
         yield n
         n += 1
@@ -49,10 +48,9 @@ class ImgFrame(QFrame):
         self.ui.spinBox.setVisible(False)
         self.ui.pushButton.clicked.connect(self.removeEvent)
         self.ui.pushButton.setText('R')
-        self.ui.spinBox.setRange(0, 999999)
+        self.ui.spinBox.setRange(1, 999999)
         self.ui.spinBox.setValue(rate)
 
-    @property
     def rate(self):
         return self.ui.spinBox.value()
 
@@ -124,7 +122,7 @@ class ImgGroupFrame(QFrame, QApplication):
         for n, image in enumerate(images):
             self.ui.horizontalLayout_2.insertWidget(n, image)
             image.master = self
-        self.ui.spinBox.setRange(0, 999999)
+        self.ui.spinBox.setRange(1, 999999)
         self.ui.spinBox.setValue(1)
 
     def rate(self) -> int:
@@ -191,7 +189,7 @@ class ImgGroupFrame(QFrame, QApplication):
         global drag_cache
         if len(self.images()) == 0:
             self.ui.horizontalLayout_2.insertWidget(
-                0, ImgFrame(drag_cache['img'].file, drag_cache['img'].id, self, drag_cache['img'].pixmap, drag_cache['img'].rate))
+                0, ImgFrame(drag_cache['img'].file, drag_cache['img'].id, self, drag_cache['img'].pixmap, drag_cache['img'].rate()))
             return
         absolute_pos = event.position().x()
         scroll_relative_pos = absolute_pos + \
@@ -206,7 +204,7 @@ class ImgGroupFrame(QFrame, QApplication):
                 if image.id == drag_cache['img'].id:
                     self.removeImg(image)
             self.ui.horizontalLayout_2.insertWidget(
-                hovering_index, ImgFrame(drag_cache['img'].file, drag_cache['img'].id, self, drag_cache['img'].pixmap, drag_cache['img'].rate))
+                hovering_index, ImgFrame(drag_cache['img'].file, drag_cache['img'].id, self, drag_cache['img'].pixmap, drag_cache['img'].rate()))
 
     def mouseMoveEvent(self, event) -> None:
         # TODO - Make the dragged image really transparent
@@ -249,7 +247,7 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
         self.scrollArea_2.dragMoveEvent = self.scrollArea2_dragMoveEvent
         self.onlyInt = QIntValidator()
         self.settingtestkey = False
-        self.test_key_id = None
+        self.interaction_key_id = None
         self.pushButton.clicked.connect(self.TestKeyEvent)
         self.pushButton.wheelEvent = self.wheelEvent
         self.pushButton_5.clicked.connect(self.make_default)
@@ -266,6 +264,7 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
         self.buttonGroup_2.addButton(self.radioButton_4)
         self.buttonGroup_3.addButton(self.radioButton_5)
         self.buttonGroup_3.addButton(self.radioButton_6)
+        self.buttonGroup_3.addButton(self.radioButton_9)
         self.buttonGroup_4.addButton(self.radioButton_7)
         self.buttonGroup_4.addButton(self.radioButton_8)
         self.buttonGroups = [self.buttonGroup, self.buttonGroup_2,
@@ -285,7 +284,8 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
         for radio_button in [self.radioButton, self.radioButton_2,
                              self.radioButton_3, self.radioButton_4,
                              self.radioButton_5, self.radioButton_6,
-                             self.radioButton_7, self.radioButton_8]:
+                             self.radioButton_7, self.radioButton_8,
+                             self.radioButton_9]:
             radio_button.setChecked(False)
         for buttonGroup in self.buttonGroups:
             buttonGroup.setExclusive(True)
@@ -323,7 +323,7 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
                 case _:
                     text = QKeySequence(key).toString()
             self.pushButton.setText(text)
-            self.test_key_id = key
+            self.interaction_key_id = key
 
     def groups(self):
         return [self.verticalLayout.itemAt(i).widget() for i in range(self.verticalLayout.count() - 2)]
@@ -433,7 +433,7 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
         else:
             return None
 
-    def test_key(self):
+    def interaction_key(self):
         return self.pushButton.text()
 
     def skip_on_click(self):
@@ -443,14 +443,20 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
         return self.comboBox.currentText()
 
     def get_configs(self):
-        if isinstance(self.test_key_id, Qt.MouseButton):
-            test_key_id = self.test_key_id.name
-        elif isinstance(self.test_key_id, int):
-            test_key_id = self.test_key_id
-        elif isinstance(self.test_key_id, QPoint):
-            test_key_id = (self.test_key_id.x(), self.test_key_id.y())
+        if isinstance(self.interaction_key_id, Qt.MouseButton):
+            interaction_key_id = self.interaction_key_id.name
+        elif isinstance(self.interaction_key_id, int):
+            interaction_key_id = self.interaction_key_id
+        elif isinstance(self.interaction_key_id, QPoint):
+            interaction_key_id = (
+                self.interaction_key_id.x(), self.interaction_key_id.y())
         else:
-            test_key_id = None
+            interaction_key_id = None
+        if self.groups():
+            n = max([group.id for group in self.groups(
+            )] + list(chain(*[[image.id for image in group.images()] for group in self.groups()])))
+        else:
+            n = 0
         configs = {
             'groups': {group.id: group.get_configs() for group in self.groups()},
             'intergroup_show_order': self.intergroup_show_order(),
@@ -462,8 +468,9 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
             'amount_of_exhibitions': self.amount_of_exhibitions(),
             'show_time': self.show_time(),
             'interval_time': self.interval_time(),
-            'test_key': test_key_id,
-            'skip_on_click': self.skip_on_click()
+            'interaction_key': interaction_key_id,
+            'skip_on_click': self.skip_on_click(),
+            'n': n
         }
         return configs
 
@@ -477,7 +484,7 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
             button = event.button()
             text = button.name
             self.pushButton.setText(text)
-            self.test_key_id = button
+            self.interaction_key_id = button
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         super().wheelEvent(event)
@@ -490,7 +497,7 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
                 self.pushButton.setText('ScrollUp')
             else:
                 self.pushButton.setText('ScrollDown')
-            self.test_key_id = event.angleDelta()
+            self.interaction_key_id = event.angleDelta()
 
     def make_default(self, event):
         platform = get_sys()
@@ -513,6 +520,9 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
     def load_settings(self, path):
         with open(path, 'r') as file:
             configs = json.load(file)
+
+            # ids generator
+            self.ids_generator = get_id(configs['n'] + 1)
 
             # intergroup show order
             if configs['intergroup_show_order']:
@@ -559,20 +569,21 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
                 self.lineEdit_3.setText(str(configs['interval_time']))
 
             # test key
-            if configs['test_key']:
-                if isinstance(configs['test_key'], int):
-                    self.test_key_id = configs['test_key']
+            if configs['interaction_key']:
+                if isinstance(configs['interaction_key'], int):
+                    self.interaction_key_id = configs['interaction_key']
                     self.pushButton.setText(QKeySequence(
-                        configs['test_key']).toString())
-                elif isinstance(configs['test_key'], list):
-                    self.test_key_id = QPoint(0, configs['test_key'][1])
-                    if sign(self.test_key_id.y()) == 1:
+                        configs['interaction_key']).toString())
+                elif isinstance(configs['interaction_key'], list):
+                    self.interaction_key_id = QPoint(
+                        0, configs['interaction_key'][1])
+                    if sign(self.interaction_key_id.y()) == 1:
                         self.pushButton.setText('ScrollUp')
                     else:
                         self.pushButton.setText('ScrollDown')
                 else:
-                    self.test_key_id = Qt.MouseButton[configs['test_key']]
-                    self.pushButton.setText(configs['test_key'])
+                    self.interaction_key_id = Qt.MouseButton[configs['interaction_key']]
+                    self.pushButton.setText(configs['interaction_key'])
 
             # skip on click
             if configs['skip_on_click']:
@@ -582,10 +593,10 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
             if configs['groups']:
                 for group in configs['groups']:
                     images = [
-                        ImgFrame(configs['groups'][group]['images'][i]['file'], i, rate=configs['groups'][group]['images'][i]['rate']) for i in configs['groups'][group]['images']
+                        ImgFrame(configs['groups'][group]['images'][i]['file'], int(i), rate=configs['groups'][group]['images'][i]['rate']) for i in configs['groups'][group]['images']
                     ]
                     self.addImgGroup(
-                        images, configs['groups'][group]['name'], group, configs['groups'][group]['rate'])
+                        images, configs['groups'][group]['name'], int(group), configs['groups'][group]['rate'])
 
     def load_default(self):
         platform = get_sys()
@@ -616,8 +627,57 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
                 self.removeImgGroup(group)
             self.load_settings(path[0])
 
+    def isDeterministicValid(self) -> bool:
+        if self.amount_of_exhibitions() % sum([group.rate() for group in self.groups()]) != 0:
+            return False
+        groups_load_unity = self.amount_of_exhibitions() / \
+            sum([group.rate() for group in self.groups()])
+        for group in self.groups():
+            if (group.rate() * groups_load_unity) % sum([img.rate() for img in group.images()]) != 0:
+                return False
+        return True
+
+    def validate_settings(self) -> bool:
+        text = ''
+        if not self.intergroup_show_order():
+            text += 'Please select intergroup show order.\n'
+        if not self.intragroup_show_order():
+            text += 'Please select intragroup show order.\n'
+        if not self.intergroup_behaviour():
+            text += 'Please select intergroup behaviour.\n'
+        if not self.selection_rate_behaviour():
+            text += 'Please select selection rate behaviour.\n'
+        if not self.amount_of_exhibitions():
+            text += 'Please enter amount of exhibitions.\n'
+        if not self.show_time():
+            text += 'Please enter show time.\n'
+        if not self.interval_time():
+            text += 'Please enter interval time.\n'
+        if not self.interaction_key():
+            text += 'Please set test key.\n'
+        if not self.groups():
+            text += 'Please add at least one group.\n'
+        for group in self.groups():
+            if not group.images():
+                text += 'All groups must have ate least one image.\n'
+        if self.intergroup_show_order() == 'Sequential' \
+           and self.intragroup_show_order() == 'Sequential' \
+           and self.selection_rate_behaviour() == 'Probabilistic':
+            text += "When intergroup and intragroup show order are both sequential selection rate behaviour can't be probabilistic.\n"
+        if not self.allow_image_repeat() and sum([len(group.images()) for group in self.groups()]) < self.amount_of_exhibitions():
+            text += "Amount of exhibitions can't be greater than the total amount of images if images aren't allowed to repeat.\n"
+        if self.selection_rate_behaviour() == 'Deterministic' and not self.isDeterministicValid():
+            text += "Amount of exhibitions must be divisible by the sum of all group rates and the amount of exhibitions for each group must be divisible by the sum of all group's images rates.\n"
+        text = text.strip('\n')
+        if text:
+            QMessageBox.warning(self, 'Error', text)
+            return False
+        return True
+
     def startEvent(self, event):
-        pprint(list(SelectImages(self.get_configs()).run()))
+        if self.validate_settings():
+            for image in SelectImages(**self.get_configs()).run():
+                print(image.id)
 
 
 if __name__ == '__main__':
@@ -634,3 +694,5 @@ if __name__ == '__main__':
 # TODO: CONSERTAR TAB
 # TODO: ADICIONAR SUPORTE PRA TELA SECUNDÁRIA
 # TODO: ESTILIZAÇÂO COM CSS
+# TODO: MUDAR NOME DO SCROLL NAS SAVE FILES
+# TODO: ADICIONAR SUPORTE AS TECLAS DIRECIONAIS
