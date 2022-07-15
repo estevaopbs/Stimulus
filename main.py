@@ -75,7 +75,7 @@ class ImgFrame(QFrame):
 
     def removeEvent(self, event) -> None:
         master_images = self.master.images()
-        if len(master_images) > 1:
+        if self != master_images[-1]:
             master_images[master_images.index(self) + 1].enterEvent(None)
         self.delete()
 
@@ -246,9 +246,9 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
         self.scrollArea_2.dragEnterEvent = self.scrollArea2_dragEnterEvent
         self.scrollArea_2.dragMoveEvent = self.scrollArea2_dragMoveEvent
         self.onlyInt = QIntValidator()
-        self.settingtestkey = False
+        self.settinginteractionkey = False
         self.interaction_key_id = None
-        self.pushButton.clicked.connect(self.TestKeyEvent)
+        self.pushButton.clicked.connect(self.InteractionKeyEvent)
         self.pushButton.wheelEvent = self.wheelEvent
         self.pushButton_5.clicked.connect(self.make_default)
         for lineEdit in self.findChildren(QLineEdit):
@@ -295,19 +295,19 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
             child.setText('')
         self.pushButton.setText('Click to set')
 
-    def TestKeyEvent(self, event):
+    def InteractionKeyEvent(self, event):
         self.pushButton.setDown(True)
         self.pushButton.setDisabled(True)
         self.pushButton.setStyleSheet("background-color: red;")
-        self.settingtestkey = True
+        self.settinginteractionkey = True
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         super().keyPressEvent(event)
-        if self.settingtestkey:
+        if self.settinginteractionkey:
             self.pushButton.setDown(False)
             self.pushButton.setDisabled(False)
             self.pushButton.setStyleSheet("background-color: none;")
-            self.settingtestkey = False
+            self.settinginteractionkey = False
             key = event.key()
             match key:
                 case 16777249:
@@ -476,11 +476,11 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         super().mousePressEvent(event)
-        if self.settingtestkey:
+        if self.settinginteractionkey:
             self.pushButton.setDown(False)
             self.pushButton.setDisabled(False)
             self.pushButton.setStyleSheet("background-color: none;")
-            self.settingtestkey = False
+            self.settinginteractionkey = False
             button = event.button()
             text = button.name
             self.pushButton.setText(text)
@@ -488,11 +488,11 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         super().wheelEvent(event)
-        if self.settingtestkey:
+        if self.settinginteractionkey:
             self.pushButton.setDown(False)
             self.pushButton.setDisabled(False)
             self.pushButton.setStyleSheet("background-color: none;")
-            self.settingtestkey = False
+            self.settinginteractionkey = False
             if sign(event.angleDelta().y()) == 1:
                 self.pushButton.setText('ScrollUp')
             else:
@@ -628,8 +628,9 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
             self.load_settings(path[0])
 
     def isDeterministicValid(self) -> bool:
-        if self.amount_of_exhibitions() % sum([group.rate() for group in self.groups()]) != 0:
-            return False
+        if str(self.amount_of_exhibitions()).isnumeric():
+            if self.amount_of_exhibitions() % sum([group.rate() for group in self.groups()]) != 0:
+                return False
         groups_load_unity = self.amount_of_exhibitions() / \
             sum([group.rate() for group in self.groups()])
         for group in self.groups():
@@ -649,12 +650,14 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
             text += 'Please select selection rate behaviour.\n'
         if not self.amount_of_exhibitions():
             text += 'Please enter amount of exhibitions.\n'
+        elif not self.allow_image_repeat() and sum([len(group.images()) for group in self.groups()]) < self.amount_of_exhibitions():
+            text += "Amount of exhibitions can't be greater than the total amount of images if images aren't allowed to repeat.\n"
         if not self.show_time():
             text += 'Please enter show time.\n'
         if not self.interval_time():
             text += 'Please enter interval time.\n'
         if not self.interaction_key():
-            text += 'Please set test key.\n'
+            text += 'Please set interaction key.\n'
         if not self.groups():
             text += 'Please add at least one group.\n'
         for group in self.groups():
@@ -664,10 +667,10 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
            and self.intragroup_show_order() == 'Sequential' \
            and self.selection_rate_behaviour() == 'Probabilistic':
             text += "When intergroup and intragroup show order are both sequential selection rate behaviour can't be probabilistic.\n"
-        if not self.allow_image_repeat() and sum([len(group.images()) for group in self.groups()]) < self.amount_of_exhibitions():
-            text += "Amount of exhibitions can't be greater than the total amount of images if images aren't allowed to repeat.\n"
         if self.selection_rate_behaviour() == 'Deterministic' and not self.isDeterministicValid():
             text += "Amount of exhibitions must be divisible by the sum of all group rates and the amount of exhibitions for each group must be divisible by the sum of all group's images rates.\n"
+        if self.selection_rate_behaviour() == 'Probabilistic' and self.intergroup_behaviour() == 'Select a new group on depletion\nof the current':
+            text += "When intergroup behaviour is set to select a new group on depletion of the current, selection rate behaviour can't be probabilistic.\n"
         text = text.strip('\n')
         if text:
             QMessageBox.warning(self, 'Error', text)
@@ -696,3 +699,6 @@ if __name__ == '__main__':
 # TODO: ESTILIZAÇÂO COM CSS
 # TODO: MUDAR NOME DO SCROLL NAS SAVE FILES
 # TODO: ADICIONAR SUPORTE AS TECLAS DIRECIONAIS
+# TODO: AUMENTAR O TAMANHO DO FRAME ESQUERDO QUANDO APARECER A SCROLLBAR
+# TODO: PERMITIR RATE = 0
+# TODO: JANELA DE MONITORAMENTO
