@@ -1,5 +1,5 @@
 from pathlib import Path
-from PyQt6.QtCore import Qt, QUrl, QMimeData, QSize, QPoint, QThread
+from PyQt6.QtCore import Qt, QUrl, QMimeData, QSize, QPoint
 from numpy import sign
 from qt_templates.ImgGroup.ImgGroup import Ui_Frame as ImgGroup
 from qt_templates.MainWindow.MainWindow import Ui_MainWindow as MainWindow
