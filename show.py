@@ -14,10 +14,8 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
         self.setupUi(self)
         self.setWindowTitle("Show")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint |
-                            # Qt.WindowType.WindowDoesNotAcceptFocus |
                             Qt.WindowType.WindowStaysOnTopHint)
         self.showFullScreen()
-        # self.label.setFocus()
         self.master = master
         self.images = images
         self.show_time = show_time/1000
@@ -29,9 +27,10 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
         self.label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.black_screen = QtGui.QPixmap(self.screen_.size())
         self.black_screen.fill(Qt.GlobalColor.black)
+        self.label.setFocus()
         if type(interaction_key) == QPoint:
-            self.label.mousePressEvent = self.mouseInteractionEvent
-        elif interaction_key in Qt.MouseButton._member_names_:
+            self.label.wheelEvent = self.scrollInteractionEvent
+        elif type(interaction_key) == Qt.MouseButton:
             self.label.mousePressEvent = self.mouseInteractionEvent
         else:
             self.label.keyPressEvent = self.keyInteractionEvent
@@ -84,7 +83,7 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
                 self.run()
 
     def mouseInteractionEvent(self, event):
-        if event.button().name == self.interaction_key:
+        if event.button() == self.interaction_key:
             if self.showing_image:
                 self.interactionEvent()
             elif not self.running:

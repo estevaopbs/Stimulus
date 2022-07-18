@@ -248,7 +248,6 @@ class Stimulus(QMainWindow, MainWindow):
         self.pushButton_5.clicked.connect(self.make_default)
         for lineEdit in self.findChildren(QLineEdit):
             lineEdit.setValidator(self.onlyInt)
-        self.load_default()
         self.buttonGroup = QButtonGroup()
         self.buttonGroup_2 = QButtonGroup()
         self.buttonGroup_3 = QButtonGroup()
@@ -270,6 +269,7 @@ class Stimulus(QMainWindow, MainWindow):
         for screen in QApplication.screens():
             self.comboBox.addItem(screen.name())
         self.pushButton_4.clicked.connect(self.startEvent)
+        self.load_default()
 
     def clear(self):
         for group in self.groups():
@@ -594,15 +594,16 @@ class Stimulus(QMainWindow, MainWindow):
     def saveSettingsEvent(self, event):
         path = QFileDialog.getSaveFileName(
             self, 'Save Settings', '', '*.json')
-        if len(path) == 1:
+        if len(path) > 0:
+            path = path[0]
             if not path.endswith('.json'):
                 path += '.json'
-            self.save_settings(path[0])
+            self.save_settings(path)
 
     def loadSettingsEvent(self, event):
         path = QFileDialog.getOpenFileName(
             self, 'Load Settings', '', '*.json')
-        if len(path) == 1:
+        if len(path) > 0:
             for group in self.groups():
                 self.removeImgGroup(group)
             self.load_settings(path[0])
@@ -664,7 +665,8 @@ class Stimulus(QMainWindow, MainWindow):
 
     def startEvent(self, event):
         if self.validate_settings():
-            all_images = chain(*[group.images() for group in self.groups()])
+            all_images = list(chain(*[group.images()
+                              for group in self.groups()]))
             images = []
             for image in SelectImages(**self.get_configs()).run():
                 images.append(
@@ -678,7 +680,7 @@ class Stimulus(QMainWindow, MainWindow):
                 } for image in images],
                 'show_time': self.show_time(),
                 'interval_time': self.interval_time(),
-                'interaction_key': self.interaction_key(),
+                'interaction_key': self.interaction_key_id,
                 'skip_on_click': self.skip_on_click(),
                 'screen': self.screen_()
             }
