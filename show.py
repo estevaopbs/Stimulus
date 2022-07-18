@@ -27,13 +27,12 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
         self.label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.black_screen = QtGui.QPixmap(self.screen_.size())
         self.black_screen.fill(Qt.GlobalColor.black)
-        self.label.setFocus()
         if type(interaction_key) == QPoint:
-            self.label.wheelEvent = self.scrollInteractionEvent
+            self.wheelEvent = self.scrollInteractionEvent
         elif type(interaction_key) == Qt.MouseButton:
-            self.label.mousePressEvent = self.mouseInteractionEvent
+            self.mousePressEvent = self.mouseInteractionEvent
         else:
-            self.label.keyPressEvent = self.keyInteractionEvent
+            self.keyPressEvent = self.keyInteractionEvent
         if skip_on_click:
             self.interactionEvent = self.skipEvent
         else:
@@ -162,12 +161,7 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
         path = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Save Data Report', '', 'JSON (*.json)')[0]
         self.id = path.split('/')[-1].split('.')[0]
-        with open(path + '.json', 'w') as f:
+        if not path.endswith('.json'):
+            path += '.json'
+        with open(path, 'w') as f:
             json.dump(self.get_report(), f, indent=4)
-
-
-if __name__ == '__main__':
-    test = QtWidgets.QApplication(sys.argv)
-    test_window = ShowWindow(0, 0, 0, 0, 0, 0, 0)
-    test_window.show()
-    test.exec()

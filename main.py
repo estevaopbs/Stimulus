@@ -20,6 +20,16 @@ from multiprocessing import Process
 drag_cache = None
 
 
+def get_sys():
+    match sys.platform:
+        case 'linux':
+            return 'linux'
+        case 'linux2':
+            return 'linux'
+        case 'win32':
+            return 'windows'
+
+
 def get_id(n=0):
     while True:
         yield n
@@ -145,20 +155,39 @@ class ImgGroupFrame(QFrame, QApplication):
             self.ui.horizontalLayout_2.count() - 1, image)
 
     def addImgEvent(self, event) -> None:
-        files = QFileDialog.getOpenFileUrls(
-            self, "Open File", QUrl("."),
-            "Images (*.png *.jpg *.jpeg *.bmp *.gif, *.rgb, *.pgm, *.ppm, *.tiff, *.rast, *.xbm, *.webp, *.exr)")[0]
-        for file in files:
-            self.addImg(ImgFrame(file.url().replace(
-                'file://', ''), self.master.get_id(), self))
+        match get_sys():
+            case 'linux':
+                files = QFileDialog.getOpenFileUrls(
+                    self, "Open File", QUrl("."),
+                    "Images (*.png *.jpg *.jpeg *.bmp *.gif, *.rgb, *.pgm, *.ppm, *.tiff, *.rast, *.xbm, *.webp, *.exr)")[0]
+                for file in files:
+                    file_ = f'{file.toString(QUrl.UrlFormattingOption.RemoveScheme)}'
+                    self.addImg(ImgFrame(file_, self.master.get_id(), self))
+            case 'windows':
+                files = QFileDialog.getOpenFileUrls(
+                    self, "Open File", QUrl("."), "Images (*.png)")[0]
+                for file in files:
+                    file_ = f'{file.toString(QUrl.UrlFormattingOption.RemoveScheme)}'
+                    file_ = file_.replace('///', '')
+                    self.addImg(ImgFrame(file_, self.master.get_id(), self))
+            case _:
+                return
 
     def addFolderEvent(self, event) -> None:
         dir = QFileDialog.getExistingDirectory(self, "Open Directory")
         if dir:
             files = []
-            for file in [os.path.join(dir, file) for file in os.listdir(dir)]:
-                if os.path.isfile(file) and imghdr.what(file):
-                    files.append(file)
+            match get_sys():
+                case 'linux':
+                    for file in [os.path.join(dir, file) for file in os.listdir(dir)]:
+                        if os.path.isfile(file) and imghdr.what(file):
+                            files.append(file)
+                case 'windows':
+                    for file in [os.path.join(dir, file) for file in os.listdir(dir)]:
+                        if os.path.isfile(file) and imghdr.what(file) == 'png':
+                            files.append(file)
+                case _:
+                    return
             for file in files:
                 self.addImg(ImgFrame(file, self.master.get_id(), self))
 
@@ -635,7 +664,7 @@ class Stimulus(QMainWindow, MainWindow):
             text += "Amount of exhibitions can't be greater than the total amount of images if images aren't allowed to repeat.\n"
         if not self.show_time():
             text += 'Please enter show time.\n'
-        if not self.interval_time():
+        if self.interval_time() is None:
             text += 'Please enter interval time.\n'
         if self.interaction_key() == 'Click to set':
             text += 'Please set interaction key.\n'
