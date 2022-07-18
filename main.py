@@ -14,7 +14,6 @@ import json
 from select_images import SelectImages
 from itertools import chain
 from show import ShowWindow
-from multiprocessing import Process
 
 
 drag_cache = None
