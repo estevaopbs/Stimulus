@@ -2,26 +2,6 @@ import random
 from enum import Enum
 
 
-class Group:
-    def __init__(self, name, images, id, rate, weight=None, load=None):
-        self.name = name
-        self.images = [Image(**image) for image in images]
-        self.id = id
-        self.rate = rate
-        self.weight = weight
-        self.load = load
-        self.last_image = self.images[-1]
-
-
-class Image:
-    def __init__(self, file, id, rate, weight=None, load=None):
-        self.file = file
-        self.id = id
-        self.rate = rate
-        self.weight = weight
-        self.load = load
-
-
 class Order(Enum):
     Random = 0
     Sequential = 1
@@ -38,18 +18,38 @@ class SelectionBehaviour(Enum):
     Probabilistic = 1
 
 
+class Image:
+    def __init__(self, file, id, rate, weight=None, load=None):
+        self.file = file
+        self.id = id
+        self.rate = rate
+        self.weight = weight
+        self.load = load
+
+
+class Group:
+    def __init__(self, name, images, id, rate, weight=None, load=None):
+        self.name = name
+        self.images = [Image(**image) for image in images]
+        self.id = id
+        self.rate = rate
+        self.weight = weight
+        self.load = load
+        self.last_image = self.images[-1]
+
+
 class SelectImages:
     def __init__(self, intergroup_show_order, intragroup_show_order,
                  intergroup_behaviour, selection_rate_behaviour, screen,
                  allow_image_repeat, amount_of_exhibitions, show_time,
                  interval_time, interaction_key, skip_on_click, groups, n):
-        self.intergroup_show_order = Order[intergroup_show_order]
-        self.intragroup_show_order = Order[intragroup_show_order]
-        self.intergroup_behaviour = IntergroupBehaviour[intergroup_behaviour.replace(
+        _intergroup_show_order = Order[intergroup_show_order]
+        _intragroup_show_order = Order[intragroup_show_order]
+        _intergroup_behaviour = IntergroupBehaviour[intergroup_behaviour.replace(
             ' ', '_').replace('\n', '_')]
-        self.selection_rate_behaviour = SelectionBehaviour[selection_rate_behaviour.replace(
+        _selection_rate_behaviour = SelectionBehaviour[selection_rate_behaviour.replace(
             ' ', '_').replace('\n', '_')]
-        self.allow_image_repeat = allow_image_repeat
+        _allow_image_repeat = allow_image_repeat
         self.amount_of_exhibitions = amount_of_exhibitions
         groups_ids = [group for group in groups]
         _groups = [groups[group] for group in groups]
@@ -62,7 +62,7 @@ class SelectImages:
                 image['id'] = id_
         self.groups = [Group(**group) for group in _groups]
         self.last_group = self.groups[-1]
-        match self.selection_rate_behaviour:
+        match _selection_rate_behaviour:
             case SelectionBehaviour.Deterministic:
                 groups_load_unity = self.amount_of_exhibitions / \
                     sum([group.rate for group in self.groups])
@@ -87,25 +87,25 @@ class SelectImages:
                 self.valid_groups = self.valid_groups_probabilistic
             case _:
                 raise Exception
-        if self.allow_image_repeat:
+        if _allow_image_repeat:
             self.repeating_behaviour = self.repeat
         else:
             self.repeating_behaviour = self.dont_repeat
-        match self.intergroup_show_order:
+        match _intergroup_show_order:
             case Order.Random:
                 self.next_group = self.random_group
             case Order.Sequential:
                 self.next_group = self.sequential_group
             case _:
                 raise Exception
-        match self.intragroup_show_order:
+        match _intragroup_show_order:
             case Order.Random:
                 self.next_image = self.random_image
             case Order.Sequential:
                 self.next_image = self.sequential_image
             case _:
                 raise Exception
-        match self.intergroup_behaviour:
+        match _intergroup_behaviour:
             case IntergroupBehaviour.Select_a_new_group_on_each_show:
                 self.run = self.select_on_each_show
             case IntergroupBehaviour.Select_a_new_group_on_depletion_of_the_current:

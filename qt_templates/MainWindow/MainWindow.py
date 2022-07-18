@@ -22,7 +22,8 @@ class Ui_MainWindow(object):
         self.scrollArea.setMinimumSize(QtCore.QSize(260, 0))
         self.scrollArea.setMaximumSize(QtCore.QSize(260, 16777215))
         self.scrollArea.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-        self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scrollArea.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
@@ -30,10 +31,12 @@ class Ui_MainWindow(object):
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.gridLayout = QtWidgets.QGridLayout(self.scrollAreaWidgetContents)
         self.gridLayout.setObjectName("gridLayout")
-        self.pushButton_2 = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
+        self.pushButton_2 = QtWidgets.QPushButton(
+            self.scrollAreaWidgetContents)
         self.pushButton_2.setObjectName("pushButton_2")
         self.gridLayout.addWidget(self.pushButton_2, 2, 0, 1, 1)
-        self.pushButton_3 = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
+        self.pushButton_3 = QtWidgets.QPushButton(
+            self.scrollAreaWidgetContents)
         self.pushButton_3.setObjectName("pushButton_3")
         self.gridLayout.addWidget(self.pushButton_3, 2, 1, 1, 1)
         self.frame_3 = QtWidgets.QFrame(self.scrollAreaWidgetContents)
@@ -199,7 +202,8 @@ class Ui_MainWindow(object):
         self.label_7.setObjectName("label_7")
         self.gridLayout_5.addWidget(self.label_7, 8, 0, 1, 1)
         self.gridLayout.addWidget(self.frame_7, 1, 0, 1, 2)
-        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        spacerItem = QtWidgets.QSpacerItem(
+            20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
         self.gridLayout.addItem(spacerItem, 4, 0, 1, 2)
         self.label = QtWidgets.QLabel(self.scrollAreaWidgetContents)
         self.label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
@@ -209,13 +213,17 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addWidget(self.scrollArea)
         self.scrollArea_2 = QtWidgets.QScrollArea(self.centralwidget)
         self.scrollArea_2.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-        self.scrollArea_2.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scrollArea_2.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scrollArea_2.setWidgetResizable(True)
         self.scrollArea_2.setObjectName("scrollArea_2")
         self.scrollAreaWidgetContents_2 = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents_2.setGeometry(QtCore.QRect(0, 0, 642, 817))
-        self.scrollAreaWidgetContents_2.setObjectName("scrollAreaWidgetContents_2")
-        self.verticalLayout = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents_2)
+        self.scrollAreaWidgetContents_2.setGeometry(
+            QtCore.QRect(0, 0, 642, 817))
+        self.scrollAreaWidgetContents_2.setObjectName(
+            "scrollAreaWidgetContents_2")
+        self.verticalLayout = QtWidgets.QVBoxLayout(
+            self.scrollAreaWidgetContents_2)
         self.verticalLayout.setObjectName("verticalLayout")
         self.frame = QtWidgets.QFrame(self.scrollAreaWidgetContents_2)
         self.frame.setMinimumSize(QtCore.QSize(0, 25))
@@ -231,10 +239,12 @@ class Ui_MainWindow(object):
         self.pushButton_6.setMaximumSize(QtCore.QSize(30, 25))
         self.pushButton_6.setObjectName("pushButton_6")
         self.gridLayout_7.addWidget(self.pushButton_6, 0, 1, 1, 1)
-        spacerItem1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem1 = QtWidgets.QSpacerItem(
+            40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
         self.gridLayout_7.addItem(spacerItem1, 0, 0, 1, 1)
         self.verticalLayout.addWidget(self.frame)
-        spacerItem2 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        spacerItem2 = QtWidgets.QSpacerItem(
+            20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
         self.verticalLayout.addItem(spacerItem2)
         self.scrollArea_2.setWidget(self.scrollAreaWidgetContents_2)
         self.horizontalLayout.addWidget(self.scrollArea_2)
@@ -254,7 +264,8 @@ class Ui_MainWindow(object):
         self.label_2.setText(_translate("MainWindow", "Settings"))
         self.radioButton_7.setText(_translate("MainWindow", "Deterministic"))
         self.radioButton_8.setText(_translate("MainWindow", "Probabilistic"))
-        self.label_10.setText(_translate("MainWindow", "Selection rate behaviour"))
+        self.label_10.setText(_translate(
+            "MainWindow", "Selection rate behaviour"))
         self.radioButton_3.setText(_translate("MainWindow", "Random"))
         self.radioButton_4.setText(_translate("MainWindow", "Sequential"))
         self.label_4.setText(_translate("MainWindow", "Intragroup show order"))
@@ -263,11 +274,12 @@ class Ui_MainWindow(object):
         self.radioButton_2.setText(_translate("MainWindow", "Sequential"))
         self.label_3.setText(_translate("MainWindow", "Intergroup show order"))
         self.radioButton_6.setText(_translate("MainWindow", "Select a new group on depletion\n"
-"of the current"))
-        self.radioButton_5.setText(_translate("MainWindow", "Select a new group on each show"))
+                                              "of the current"))
+        self.radioButton_5.setText(_translate(
+            "MainWindow", "Select a new group on each show"))
         self.label_5.setText(_translate("MainWindow", "Intergroup behaviour"))
         self.radioButton_9.setText(_translate("MainWindow", "Select a new group once all\n"
-"images have been shown"))
+                                              "images have been shown"))
         self.checkBox_3.setText(_translate("MainWindow", "Skip on click"))
         self.label_6.setText(_translate("MainWindow", "Amount of exhibitions"))
         self.label_12.setText(_translate("MainWindow", "Screen"))

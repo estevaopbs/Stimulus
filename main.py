@@ -1,5 +1,5 @@
 from pathlib import Path
-from PyQt6.QtCore import Qt, QUrl, QMimeData, QSize, QPoint
+from PyQt6.QtCore import Qt, QUrl, QMimeData, QSize, QPoint, QThread
 from numpy import sign
 from qt_templates.ImgGroup.ImgGroup import Ui_Frame as ImgGroup
 from qt_templates.MainWindow.MainWindow import Ui_MainWindow as MainWindow
@@ -13,19 +13,11 @@ from math import floor
 import json
 from select_images import SelectImages
 from itertools import chain
+from show import ShowWindow
+from multiprocessing import Process
 
 
 drag_cache = None
-
-
-def get_sys():
-    match sys.platform:
-        case 'linux':
-            return 'linux'
-        case 'linux2':
-            return 'linux'
-        case 'win32':
-            return 'windows'
 
 
 def get_id(n=0):
@@ -50,6 +42,9 @@ class ImgFrame(QFrame):
         self.ui.pushButton.setText('R')
         self.ui.spinBox.setRange(1, 999999)
         self.ui.spinBox.setValue(rate)
+
+    def group_name(self):
+        return self.master.name
 
     def rate(self):
         return self.ui.spinBox.value()
@@ -234,7 +229,7 @@ class ImgGroupFrame(QFrame, QApplication):
             drag.exec()
 
 
-class Stimulus(QMainWindow, MainWindow, QApplication):
+class Stimulus(QMainWindow, MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         super().setupUi(self)
@@ -272,7 +267,7 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
         self.pushButton_2.clicked.connect(self.saveSettingsEvent)
         self.pushButton_3.clicked.connect(self.loadSettingsEvent)
         self.pushButton_7.clicked.connect(self.clear)
-        for screen in self.screens():
+        for screen in QApplication.screens():
             self.comboBox.addItem(screen.name())
         self.pushButton_4.clicked.connect(self.startEvent)
 
@@ -500,15 +495,7 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
             self.interaction_key_id = event.angleDelta()
 
     def make_default(self, event):
-        platform = get_sys()
-        if platform == 'linux':
-            home_dir = Path(os.environ['HOME'])
-        elif platform == 'windows':
-            home_dir = Path(os.environ['HOMEDRIVE']) / \
-                Path(os.environ['HOMEPATH'])
-        else:
-            raise OSError(
-                'Stimulus is not entirely compatible with this operational system.')
+        home_dir = Path.home()
         if not os.path.isdir(home_dir / '.Stimulus'):
             os.mkdir(home_dir / '.Stimulus')
         self.save_settings(home_dir/'.Stimulus/default.json')
@@ -599,14 +586,7 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
                         images, configs['groups'][group]['name'], int(group), configs['groups'][group]['rate'])
 
     def load_default(self):
-        platform = get_sys()
-        if platform == 'linux':
-            home_dir = Path(os.environ['HOME'])
-        elif platform == 'windows':
-            home_dir = Path(os.environ['HOMEDRIVE']) / \
-                Path(os.environ['HOMEPATH'])
-        else:
-            return
+        home_dir = Path.home()
         if os.path.isdir(home_dir/'.Stimulus'):
             if os.path.isfile(home_dir/'.Stimulus/default.json'):
                 self.load_settings(home_dir/'.Stimulus/default.json')
@@ -656,13 +636,18 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
             text += 'Please enter show time.\n'
         if not self.interval_time():
             text += 'Please enter interval time.\n'
-        if not self.interaction_key():
+        if self.interaction_key() == 'Click to set':
             text += 'Please set interaction key.\n'
         if not self.groups():
             text += 'Please add at least one group.\n'
         for group in self.groups():
             if not group.images():
-                text += 'All groups must have ate least one image.\n'
+                text += 'All groups must have at least one image.\n'
+                break
+        for group in self.groups():
+            if not group.name:
+                text += 'All groups must have a name.\n'
+                break
         if self.intergroup_show_order() == 'Sequential' \
            and self.intragroup_show_order() == 'Sequential' \
            and self.selection_rate_behaviour() == 'Probabilistic':
@@ -679,8 +664,25 @@ class Stimulus(QMainWindow, MainWindow, QApplication):
 
     def startEvent(self, event):
         if self.validate_settings():
+            all_images = chain(*[group.images() for group in self.groups()])
+            images = []
             for image in SelectImages(**self.get_configs()).run():
-                print(image.id)
+                images.append(
+                    next(filter(lambda img: img.id == image.id, all_images)))
+            args = {
+                'master': self,
+                'images': [{
+                    'file': image.file,
+                    'group_name': image.group_name(),
+                    'pixmap': image.pixmap
+                } for image in images],
+                'show_time': self.show_time(),
+                'interval_time': self.interval_time(),
+                'interaction_key': self.interaction_key(),
+                'skip_on_click': self.skip_on_click(),
+                'screen': self.screen_()
+            }
+            ShowWindow(**args)
 
 
 if __name__ == '__main__':
