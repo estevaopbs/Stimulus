@@ -1,6 +1,6 @@
 import random
 from enum import Enum
-from typing import Any
+from typing import Any, Generator
 
 
 class Order(Enum):
@@ -20,7 +20,8 @@ class SelectionBehaviour(Enum):
 
 
 class Image:
-    def __init__(self, file: str, id: int, rate: int, weight: int | None = None, load: int | None = None) -> None:
+    def __init__(self, file: str, id: int, rate: int,
+                 weight: int | None = None, load: int | None = None) -> None:
         self.file = file
         self.id = id
         self.rate = rate
@@ -29,7 +30,10 @@ class Image:
 
 
 class Group:
-    def __init__(self, name: str, images: Image, id: int, rate: int, weight: int | None = None, load: int | None = None):
+    def __init__(self, name: str,
+                 images: list[dict[str, str | dict[str, str | int | None] | int | None]],
+                 id: int, rate: int, weight: int | None = None,
+                 load: int | None = None):
         self.name = name
         self.images = [Image(**image) for image in images]
         self.id = id
@@ -46,7 +50,7 @@ class SelectImages:
                  amount_of_exhibitions: int, show_time: Any,
                  interval_time: Any, interaction_key: Any, skip_on_click: Any,
                  groups: dict[int, dict[str, str | int |
-                                        dict[int, dict[str, str]]]], n: Any):
+                                        dict[int, dict[str, str]]]], n: Any) -> None:
         _intergroup_show_order = Order[intergroup_show_order]
         _intragroup_show_order = Order[intragroup_show_order]
         _intergroup_behaviour = IntergroupBehaviour[intergroup_behaviour.replace(
@@ -120,37 +124,37 @@ class SelectImages:
                 raise Exception
 
     @staticmethod
-    def dont_repeat(image):
+    def dont_repeat(image: Image) -> None:
         image.load = 0
         image.weight = 0
 
     @staticmethod
-    def repeat(image):
+    def repeat(image: Image) -> None:
         pass
 
     @staticmethod
-    def valid_images_probabilistic(group) -> list:
+    def valid_images_probabilistic(group) -> list[Image]:
         return [image for image in group.images if image.weight > 0]
 
-    def valid_groups_probabilistic(self) -> list:
+    def valid_groups_probabilistic(self) -> list[Group]:
         return [group for group in self.groups if group.weight > 0]
 
     @staticmethod
-    def valid_images_deterministic(group):
+    def valid_images_deterministic(group) -> list[Image]:
         return [image for image in group.images if image.load > 0]
 
-    def valid_groups_deterministic(self) -> list:
+    def valid_groups_deterministic(self) -> list[Group]:
         return [group for group in self.groups if group.load > 0]
 
     @staticmethod
-    def reduce_load(item):
+    def reduce_load(item) -> None:
         item.load -= 1
 
     @staticmethod
-    def dont_reduce_load(item):
+    def dont_reduce_load(item) -> None:
         pass
 
-    def random_image(self, group):
+    def random_image(self, group) -> Image:
         images = self.valid_images(group)
         image = random.choices(
             images, weights=[image.weight for image in images])[0]
@@ -159,7 +163,7 @@ class SelectImages:
         self.reduce(group)
         return image
 
-    def sequential_image(self, group):
+    def sequential_image(self, group) -> Image:
         images = self.valid_images(group)
         index = None
         if group.last_image in images and images[images.index(group.last_image) + 1:]:
@@ -178,13 +182,13 @@ class SelectImages:
         self.reduce(group)
         return image
 
-    def random_group(self) -> dict:
+    def random_group(self) -> Group:
         groups = self.valid_groups()
         group = random.choices(
             groups, weights=[group.weight for group in groups])[0]
         return group
 
-    def sequential_group(self) -> dict:
+    def sequential_group(self) -> Group:
         groups = self.valid_groups()
         index = None
         if self.last_group in groups and groups[groups.index(self.last_group) + 1:]:
@@ -200,11 +204,11 @@ class SelectImages:
         self.last_group = group
         return group
 
-    def select_on_each_show(self):
+    def select_on_each_show(self) -> Generator[Image, None, None]:
         for _ in range(self.amount_of_exhibitions):
             yield self.next_image(self.next_group())
 
-    def select_once_all_images_have_been_shown(self):
+    def select_once_all_images_have_been_shown(self) -> Generator[Image, None, None]:
         group = self.next_group()
         yield self.next_image(group)
         for _ in range(self.amount_of_exhibitions - 1):
@@ -213,7 +217,7 @@ class SelectImages:
                 group = self.next_group()
             yield self.next_image(group)
 
-    def select_on_depletion_of_the_current(self):
+    def select_on_depletion_of_the_current(self) -> Generator[Image, None, None]:
         group = self.next_group()
         for _ in range(self.amount_of_exhibitions):
             if group not in self.valid_groups():

@@ -4,6 +4,7 @@ from templates.Show.Show import Ui_MainWindow as Show
 from datetime import datetime
 import time
 import json
+from .main import ImageFrame, ImageGroupFrame
 
 
 class ShowWindow(QtWidgets.QMainWindow, Show):
@@ -72,7 +73,7 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
         self.close()
         self.showReportBox()
 
-    def scrollInteractionEvent(self, event) -> None:
+    def scrollInteractionEvent(self, event: QtGui.QWheelEvent) -> None:
         if event.angleDelta() == self.interaction_key:
             if self.showing_image:
                 self.interactionEvent()
@@ -80,14 +81,14 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
             elif not self.running:
                 self.run()
 
-    def mouseInteractionEvent(self, event) -> None:
+    def mouseInteractionEvent(self, event: QtGui.QMouseEvent) -> None:
         if event.button() == self.interaction_key:
             if self.showing_image:
                 self.interactionEvent()
             elif not self.running:
                 self.run()
 
-    def keyInteractionEvent(self, event) -> None:
+    def keyInteractionEvent(self, event: QtGui.QKeyEvent) -> None:
         if event.key() == self.interaction_key:
             if self.showing_image:
                 self.interactionEvent()
