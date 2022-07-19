@@ -570,7 +570,7 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
                 elif isinstance(configs['interaction_key'], list):
                     self.interaction_key_id = QtCore.QPoint(
                         0, configs['interaction_key'][1])
-                    if sign(self.interaction_key_id.y()) == 1:
+                    if np.sign(self.interaction_key_id.y()) == 1:
                         self.pushButton.setText('ScrollUp')
                     else:
                         self.pushButton.setText('ScrollDown')
