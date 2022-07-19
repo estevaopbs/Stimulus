@@ -1,5 +1,6 @@
 import random
 from enum import Enum
+from typing import Any
 
 
 class Order(Enum):
@@ -19,7 +20,7 @@ class SelectionBehaviour(Enum):
 
 
 class Image:
-    def __init__(self, file, id, rate, weight=None, load=None):
+    def __init__(self, file: str, id: int, rate: int, weight: int | None = None, load: int | None = None) -> None:
         self.file = file
         self.id = id
         self.rate = rate
@@ -28,7 +29,7 @@ class Image:
 
 
 class Group:
-    def __init__(self, name, images, id, rate, weight=None, load=None):
+    def __init__(self, name: str, images: Image, id: int, rate: int, weight: int | None = None, load: int | None = None):
         self.name = name
         self.images = [Image(**image) for image in images]
         self.id = id
@@ -39,10 +40,13 @@ class Group:
 
 
 class SelectImages:
-    def __init__(self, intergroup_show_order, intragroup_show_order,
-                 intergroup_behaviour, selection_rate_behaviour, screen,
-                 allow_image_repeat, amount_of_exhibitions, show_time,
-                 interval_time, interaction_key, skip_on_click, groups, n):
+    def __init__(self, intergroup_show_order: str, intragroup_show_order: str,
+                 intergroup_behaviour: str, selection_rate_behaviour: str,
+                 screen: Any, allow_image_repeat: bool,
+                 amount_of_exhibitions: int, show_time: Any,
+                 interval_time: Any, interaction_key: Any, skip_on_click: Any,
+                 groups: dict[int, dict[str, str | int |
+                                        dict[int, dict[str, str]]]], n: Any):
         _intergroup_show_order = Order[intergroup_show_order]
         _intragroup_show_order = Order[intragroup_show_order]
         _intergroup_behaviour = IntergroupBehaviour[intergroup_behaviour.replace(

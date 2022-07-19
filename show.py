@@ -8,7 +8,7 @@ import json
 
 class ShowWindow(QtWidgets.QMainWindow, Show):
     def __init__(self, master, images, show_time, interval_time,
-                 interaction_key, skip_on_click, screen, parent=None):
+                 interaction_key, skip_on_click, screen, parent=None) -> None:
         super(ShowWindow, self).__init__(parent)
         self.setupUi(self)
         self.setWindowTitle("Show")
@@ -49,7 +49,7 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
         self.setCursor(Qt.CursorShape.BlankCursor)
         self.show()
 
-    def run(self):
+    def run(self) -> None:
         self.running = True
         self.absolute_start_time = time.time()
         for n, image in enumerate(self.images):
@@ -72,7 +72,7 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
         self.close()
         self.showReportBox()
 
-    def scrollInteractionEvent(self, event):
+    def scrollInteractionEvent(self, event) -> None:
         if event.angleDelta() == self.interaction_key:
             if self.showing_image:
                 self.interactionEvent()
@@ -80,14 +80,14 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
             elif not self.running:
                 self.run()
 
-    def mouseInteractionEvent(self, event):
+    def mouseInteractionEvent(self, event) -> None:
         if event.button() == self.interaction_key:
             if self.showing_image:
                 self.interactionEvent()
             elif not self.running:
                 self.run()
 
-    def keyInteractionEvent(self, event):
+    def keyInteractionEvent(self, event) -> None:
         if event.key() == self.interaction_key:
             if self.showing_image:
                 self.interactionEvent()
@@ -95,11 +95,11 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
             elif not self.running:
                 self.run()
 
-    def skipEvent(self):
+    def skipEvent(self) -> None:
         self.skip = True
         self._interactionEvent()
 
-    def _interactionEvent(self):
+    def _interactionEvent(self) -> None:
         if not self.clicked:
             now = time.time()
             self.times.append(now - self.absolute_start_time)
@@ -107,7 +107,7 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
                 now - self.relative_start_time - self.interval_time)
             self.clicked = True
 
-    def get_report(self):
+    def get_report(self) -> dict[str, int | list[dict[str, str]] | float | str]:
         report = {
             'id': self.id,
             'images': [
@@ -124,7 +124,7 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
         }
         return report
 
-    def showReportBox(self):
+    def showReportBox(self) -> None:
         report_box = QtWidgets.QMessageBox()
         report_box.setWindowTitle("Report")
         groups = set([image['group_name'] for image in self.images])
@@ -148,15 +148,15 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
             group_clicked_ps = 'was' if clicked_groups_counts[group] == 1 else 'were'
             text += f'{clicked_groups_counts[group]} {group_clicked_ps} from the group {group}\n'
         report_box.setText(text)
-        report_box.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Discard |
-                                      QtWidgets.QMessageBox.StandardButton.Save)
+        report_box.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Save |
+                                      QtWidgets.QMessageBox.StandardButton.Discard)
         btn = report_box.exec()
         if btn == QtWidgets.QMessageBox.StandardButton.Save:
             self.save_report()
         elif btn == QtWidgets.QMessageBox.StandardButton.Discard:
             pass
 
-    def save_report(self):
+    def save_report(self) -> None:
         path = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Save Data Report', '', 'JSON (*.json)')[0]
         self.id = path.split('/')[-1].split('.')[0]
