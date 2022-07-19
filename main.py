@@ -1,6 +1,6 @@
 from pathlib import Path
 from PyQt6 import QtCore, QtGui, QtWidgets
-from numpy import sign
+import numpy as np
 from templates.ImgGroup.ImgGroup import Ui_Frame as ImageGroup
 from templates.MainWindow.MainWindow import Ui_MainWindow as MainWindow
 from templates.Img.Img import Ui_Form as ImageLabel
@@ -494,7 +494,7 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
             self.pushButton.setDisabled(False)
             self.pushButton.setStyleSheet("background-color: none;")
             self.settinginteractionkey = False
-            if sign(event.angleDelta().y()) == 1:
+            if np.sign(event.angleDelta().y()) == 1:
                 self.pushButton.setText('ScrollUp')
             else:
                 self.pushButton.setText('ScrollDown')
@@ -690,8 +690,7 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
                 'skip_on_click': self.skip_on_click(),
                 'screen': self.screen_()
             }
-            show_window = ShowWindow(**args)
-            show_window.deleteLater()
+            ShowWindow(**args)
 
 
 if __name__ == '__main__':
@@ -700,11 +699,8 @@ if __name__ == '__main__':
     window.show()
     app.exec()
 
-# TODO: DEIXAR O CODIGO MAIS LIMPO
-# TODO: FAZER CLASSES COM HERANÇA
 # TODO: CONSERTAR TAB
 # TODO: ESTILIZAÇÂO COM CSS
-# TODO: MUDAR NOME DO SCROLL NAS SAVE FILES
 # TODO: ADICIONAR SUPORTE AS TECLAS DIRECIONAIS
 # TODO: AUMENTAR O TAMANHO DO FRAME ESQUERDO QUANDO APARECER A SCROLLBAR
 # TODO: PERMITIR RATE = 0
