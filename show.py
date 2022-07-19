@@ -1,20 +1,22 @@
+from __future__ import annotations
 from PyQt6 import QtGui, QtCore, QtWidgets
-from PyQt6.QtCore import Qt, QPoint
 from templates.Show.Show import Ui_MainWindow as Show
 from datetime import datetime
 import time
 import json
-from .main import ImageFrame, ImageGroupFrame
 
 
 class ShowWindow(QtWidgets.QMainWindow, Show):
-    def __init__(self, master, images, show_time, interval_time,
-                 interaction_key, skip_on_click, screen, parent=None) -> None:
+    def __init__(self, master: Stimulus, images: list[ImageFrame],
+                 show_time: int, interval_time: int,
+                 interaction_key: QtCore.QPoint | QtCore.Qt.MouseButton | int,
+                 skip_on_click: bool, screen: str,
+                 parent: None = None) -> None:
         super(ShowWindow, self).__init__(parent)
         self.setupUi(self)
         self.setWindowTitle("Show")
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint |
-                            Qt.WindowType.WindowStaysOnTopHint)
+        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint |
+                            QtCore.Qt.WindowType.WindowStaysOnTopHint)
         self.showFullScreen()
         self.master = master
         self.images = images
@@ -26,10 +28,10 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
         self.label.setStyleSheet("background-color: black;")
         self.label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.black_screen = QtGui.QPixmap(self.screen_.size())
-        self.black_screen.fill(Qt.GlobalColor.black)
-        if type(interaction_key) == QPoint:
+        self.black_screen.fill(QtCore.Qt.GlobalColor.black)
+        if type(interaction_key) == QtCore.QPoint:
             self.wheelEvent = self.scrollInteractionEvent
-        elif type(interaction_key) == Qt.MouseButton:
+        elif type(interaction_key) == QtCore.Qt.MouseButton:
             self.mousePressEvent = self.mouseInteractionEvent
         else:
             self.keyPressEvent = self.keyInteractionEvent
@@ -47,7 +49,7 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
         monitor = self.screen_.geometry()
         self.move(monitor.topLeft())
         self.resize(monitor.width(), monitor.height())
-        self.setCursor(Qt.CursorShape.BlankCursor)
+        self.setCursor(QtCore.Qt.CursorShape.BlankCursor)
         self.show()
 
     def run(self) -> None:
@@ -61,7 +63,7 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
             while time.time() - self.relative_start_time < self.interval_time:
                 QtWidgets.QApplication.processEvents()
             self.label.setPixmap(image['pixmap'].scaled(self.label.size(
-            ), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            ), QtCore.Qt.AspectRatioMode.KeepAspectRatio, QtCore.Qt.TransformationMode.SmoothTransformation))
             self.showing_image = True
             while time.time() - self.relative_start_time < self.interval_time + self.show_time and not self.skip:
                 QtWidgets.QApplication.processEvents()
