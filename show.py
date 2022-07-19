@@ -1,6 +1,6 @@
 from PyQt6 import QtGui, QtCore, QtWidgets
 from PyQt6.QtCore import Qt, QPoint
-from qt_templates.Show.Show import Ui_MainWindow as Show
+from templates.Show.Show import Ui_MainWindow as Show
 from datetime import datetime
 import time
 import json

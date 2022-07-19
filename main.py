@@ -1,14 +1,11 @@
 from pathlib import Path
-from PyQt6.QtCore import Qt, QUrl, QMimeData, QSize, QPoint
+from PyQt6 import QtCore, QtGui, QtWidgets
 from numpy import sign
-from qt_templates.ImgGroup.ImgGroup import Ui_Frame as ImgGroup
-from qt_templates.MainWindow.MainWindow import Ui_MainWindow as MainWindow
-from PyQt6.QtWidgets import QMainWindow, QApplication, QFrame, QFileDialog, QRadioButton, QLineEdit, QCheckBox, QButtonGroup, QMessageBox
-from PyQt6.QtGui import QPixmap, QDrag, QPainter, QScreen, QIntValidator, QKeyEvent, QKeySequence, QMouseEvent, QWheelEvent
-from qt_templates.Img.Img import Ui_Form as Img
+from templates.ImgGroup.ImgGroup import Ui_Frame as ImageGroup
+from templates.MainWindow.MainWindow import Ui_MainWindow as MainWindow
+from templates.Img.Img import Ui_Form as ImageLabel
 import sys
 import os
-import imghdr
 from math import floor
 import json
 from select_images import SelectImages
@@ -16,9 +13,6 @@ from itertools import chain
 from show import ShowWindow
 from PIL.ImageQt import ImageQt
 from PIL import Image
-
-
-drag_cache = None
 
 
 def is_image(path):
@@ -45,10 +39,10 @@ def get_id(n=0):
         n += 1
 
 
-class ImgFrame(QFrame):
+class ImageFrame(QtWidgets.QFrame):
     def __init__(self, file, id, master=None, pixmap=None, rate=1):
         super().__init__()
-        self.ui = Img()
+        self.ui = ImageLabel()
         self.ui.setupUi(self)
         self.master = master
         self.pixmap = pixmap
@@ -77,7 +71,7 @@ class ImgFrame(QFrame):
     def setImg(self):
         if not self.pixmap:
             self.pil_image = ImageQt(self.file)
-            self.pixmap = QPixmap.fromImage(self.pil_image)
+            self.pixmap = QtGui.QPixmap.fromImage(self.pil_image)
         self.ui.label.setPixmap(self.pixmap)
 
     def enterEvent(self, event) -> None:
@@ -98,19 +92,15 @@ class ImgFrame(QFrame):
         self.master.removeImg(self)
 
     def mouseMoveEvent(self, event) -> None:
-        # TODO - Make the dragged image really transparent
-        if event.buttons() & Qt.MouseButton.LeftButton:
-            global drag_cache
-            drag_cache = {
-                'img': self
-            }
-            drag = QDrag(self)
-            mimedata = QMimeData()
+        if event.buttons() & QtCore.Qt.MouseButton.LeftButton:
+            self.master.master.drag_cache = self
+            drag = QtGui.QDrag(self)
+            mimedata = QtCore.QMimeData()
             mimedata.setImageData(self.pixmap)
             drag.setMimeData(mimedata)
-            pixmap = QPixmap(QSize(150, 150))
-            pixmap.fill(Qt.GlobalColor.transparent)
-            painter = QPainter(pixmap)
+            pixmap = QtGui.QPixmap(QtCore.QSize(150, 150))
+            pixmap.fill(QtCore.Qt.GlobalColor.transparent)
+            painter = QtGui.QPainter(pixmap)
             painter.setOpacity(0.5)
             painter.drawPixmap(self.rect(), self.pixmap)
             painter.end()
@@ -119,10 +109,10 @@ class ImgFrame(QFrame):
             drag.exec()
 
 
-class ImgGroupFrame(QFrame, QApplication):
+class ImgGroupFrame(QtWidgets.QFrame, QtWidgets.QApplication):
     def __init__(self, master, id, images=[], name='') -> None:
         super().__init__()
-        self.ui = ImgGroup()
+        self.ui = ImageGroup()
         self.ui.setupUi(self)
         self.master = master
         self.id = id
@@ -160,50 +150,50 @@ class ImgGroupFrame(QFrame, QApplication):
     def delete(self, event) -> None:
         self.master.removeImgGroupBtn(self)
 
-    def addImg(self, image: ImgFrame) -> None:
+    def addImg(self, image: ImageFrame) -> None:
         self.ui.horizontalLayout_2.insertWidget(
             self.ui.horizontalLayout_2.count() - 1, image)
 
     def addImgEvent(self, event) -> None:
-        files = QFileDialog.getOpenFileUrls(
-            self, "Open File", QUrl("."),
+        files = QtWidgets.QFileDialog.getOpenFileUrls(
+            self, "Open File", QtCore.QUrl("."),
             "Images (*.png *.jpg *.jpeg *.bmp *.gif, *.rgb, *.pgm, *.ppm, *.tiff, *.rast, *.xbm, *.exr, *.webp)")[0]
         for file in files:
             file_ = Path(file.path())
             if is_image(file_):
-                self.addImg(ImgFrame(file_, self.master.get_id(), self))
+                self.addImg(ImageFrame(file_, self.master.get_id(), self))
 
     def addFolderEvent(self, event) -> None:
-        dir = QFileDialog.getExistingDirectory(self, "Open Directory")
+        dir = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Open Directory")
         if dir:
             for file in [os.path.join(dir, file) for file in os.listdir(dir)]:
                 file_ = Path(file)
                 if is_image(file_):
-                    self.addImg(ImgFrame(file_, self.master.get_id(), self))
+                    self.addImg(ImageFrame(file_, self.master.get_id(), self))
 
-    def removeImg(self, img: ImgFrame) -> None:
+    def removeImg(self, img: ImageFrame) -> None:
         img.hide()
         self.ui.horizontalLayout_2.removeWidget(img)
 
     def dragEnterEvent(self, event) -> None:
-        global drag_cache
-        if 'img' in drag_cache:
+        if isinstance(self.master.drag_cache, ImageFrame):
             event.accept()
         else:
             event.ignore()
 
     def dragLeaveEvent(self, event) -> None:
-        global drag_cache
-        if 'img' in drag_cache:
+        if isinstance(self.master.drag_cache, ImageFrame):
             image = list(filter(lambda x: x.id ==
-                                drag_cache['img'].id, self.images()))[0]
+                                self.master.drag_cache.id, self.images()))[0]
             self.removeImg(image)
 
     def dragMoveEvent(self, event) -> None:
-        global drag_cache
         if len(self.images()) == 0:
             self.ui.horizontalLayout_2.insertWidget(
-                0, ImgFrame(drag_cache['img'].file, drag_cache['img'].id, self, drag_cache['img'].pixmap, drag_cache['img'].rate()))
+                0, ImageFrame(self.master.drag_cache.file,
+                              self.master.drag_cache.id, self, self.master.drag_cache.pixmap,
+                              self.master.drag_cache.rate()))
             return
         absolute_pos = event.position().x()
         scroll_relative_pos = absolute_pos + \
@@ -213,22 +203,20 @@ class ImgGroupFrame(QFrame, QApplication):
             hovering_index = 0
         if hovering_index >= len(self.images()):
             hovering_index = len(self.images()) - 1
-        if (self.ui.horizontalLayout_2.itemAt(hovering_index) is not None and self.ui.horizontalLayout_2.itemAt(hovering_index).widget().id != drag_cache['img'].id):
+        if (self.ui.horizontalLayout_2.itemAt(hovering_index) is not None and self.ui.horizontalLayout_2.itemAt(hovering_index).widget().id != self.master.drag_cache.id):
             for image in self.images():
-                if image.id == drag_cache['img'].id:
+                if image.id == self.master.drag_cache.id:
                     self.removeImg(image)
             self.ui.horizontalLayout_2.insertWidget(
-                hovering_index, ImgFrame(drag_cache['img'].file, drag_cache['img'].id, self, drag_cache['img'].pixmap, drag_cache['img'].rate()))
+                hovering_index, ImageFrame(self.master.drag_cache.file,
+                                           self.master.drag_cache.id, self, self.master.drag_cache.pixmap,
+                                           self.master.drag_cache.rate()))
 
     def mouseMoveEvent(self, event) -> None:
-        # TODO - Make the dragged image really transparent
-        if event.buttons() & Qt.MouseButton.LeftButton:
-            global drag_cache
-            drag_cache = {
-                'group': self
-            }
-            drag = QDrag(self)
-            mimedata = QMimeData()
+        if event.buttons() & QtCore.Qt.MouseButton.LeftButton:
+            self.master.drag_cache = self
+            drag = QtGui.QDrag(self)
+            mimedata = QtCore.QMimeData()
             drag.setMimeData(mimedata)
             x = self.geometry().x() + self.master.scrollArea_2.geometry().x() + \
                 self.master.geometry().x()
@@ -236,11 +224,11 @@ class ImgGroupFrame(QFrame, QApplication):
                 self.master.geometry().y() - self.master.scrollArea_2.verticalScrollBar().value()
             width = self.frameGeometry().width()
             height = self.frameGeometry().height()
-            pixmap = QPixmap(width, height)
-            pixmap.fill(Qt.GlobalColor.transparent)
-            painter = QPainter(pixmap)
+            pixmap = QtGui.QPixmap(width, height)
+            pixmap.fill(QtCore.Qt.GlobalColor.transparent)
+            painter = QtGui.QPainter(pixmap)
             painter.setOpacity(0.5)
-            painter.drawPixmap(self.rect(), QScreen.grabWindow(
+            painter.drawPixmap(self.rect(), QtGui.QScreen.grabWindow(
                 self.primaryScreen(), x=x, y=y, width=width, height=height))
             painter.end()
             drag.setPixmap(pixmap)
@@ -248,7 +236,7 @@ class ImgGroupFrame(QFrame, QApplication):
             drag.exec()
 
 
-class Stimulus(QMainWindow, MainWindow):
+class Stimulus(QtWidgets.QMainWindow, MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         super().setupUi(self)
@@ -259,18 +247,18 @@ class Stimulus(QMainWindow, MainWindow):
         self.scrollArea_2.setAcceptDrops(True)
         self.scrollArea_2.dragEnterEvent = self.scrollArea2_dragEnterEvent
         self.scrollArea_2.dragMoveEvent = self.scrollArea2_dragMoveEvent
-        self.onlyInt = QIntValidator()
+        self.onlyInt = QtGui.QIntValidator()
         self.settinginteractionkey = False
         self.interaction_key_id = None
         self.pushButton.clicked.connect(self.InteractionKeyEvent)
         self.pushButton.wheelEvent = self.wheelEvent
         self.pushButton_5.clicked.connect(self.make_default)
-        for lineEdit in self.findChildren(QLineEdit):
+        for lineEdit in self.findChildren(QtWidgets.QLineEdit):
             lineEdit.setValidator(self.onlyInt)
-        self.buttonGroup = QButtonGroup()
-        self.buttonGroup_2 = QButtonGroup()
-        self.buttonGroup_3 = QButtonGroup()
-        self.buttonGroup_4 = QButtonGroup()
+        self.buttonGroup = QtWidgets.QButtonGroup()
+        self.buttonGroup_2 = QtWidgets.QButtonGroup()
+        self.buttonGroup_3 = QtWidgets.QButtonGroup()
+        self.buttonGroup_4 = QtWidgets.QButtonGroup()
         self.buttonGroup.addButton(self.radioButton)
         self.buttonGroup.addButton(self.radioButton_2)
         self.buttonGroup_2.addButton(self.radioButton_3)
@@ -285,9 +273,10 @@ class Stimulus(QMainWindow, MainWindow):
         self.pushButton_2.clicked.connect(self.saveSettingsEvent)
         self.pushButton_3.clicked.connect(self.loadSettingsEvent)
         self.pushButton_7.clicked.connect(self.clear)
-        for screen in QApplication.screens():
+        for screen in QtWidgets.QApplication.screens():
             self.comboBox.addItem(screen.name())
         self.pushButton_4.clicked.connect(self.startEvent)
+        self.drag_cache = None
         self.load_default()
 
     def clear(self):
@@ -303,9 +292,9 @@ class Stimulus(QMainWindow, MainWindow):
             radio_button.setChecked(False)
         for buttonGroup in self.buttonGroups:
             buttonGroup.setExclusive(True)
-        for child in self.findChildren(QCheckBox):
+        for child in self.findChildren(QtWidgets.QCheckBox):
             child.setChecked(False)
-        for child in self.findChildren(QLineEdit):
+        for child in self.findChildren(QtWidgets.QLineEdit):
             child.setText('')
         self.pushButton.setText('Click to set')
 
@@ -315,7 +304,7 @@ class Stimulus(QMainWindow, MainWindow):
         self.pushButton.setStyleSheet("background-color: red;")
         self.settinginteractionkey = True
 
-    def keyPressEvent(self, event: QKeyEvent) -> None:
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         super().keyPressEvent(event)
         if self.settinginteractionkey:
             self.pushButton.setDown(False)
@@ -335,7 +324,7 @@ class Stimulus(QMainWindow, MainWindow):
                 case 16777250:
                     text = "Winkey"
                 case _:
-                    text = QKeySequence(key).toString()
+                    text = QtGui.QKeySequence(key).toString()
             self.pushButton.setText(text)
             self.interaction_key_id = key
 
@@ -363,14 +352,12 @@ class Stimulus(QMainWindow, MainWindow):
         group.deleteLater()
 
     def scrollArea2_dragEnterEvent(self, event):
-        global drag_cache
-        if 'group' in drag_cache:
+        if isinstance(self.drag_cache, ImgGroupFrame):
             event.accept()
         else:
             event.ignore()
 
     def scrollArea2_dragMoveEvent(self, event) -> None:
-        global drag_cache
         absolute_pos = event.position().y()
         scroll_relative_pos = absolute_pos + \
             self.scrollArea_2.verticalScrollBar().value() - 9
@@ -379,16 +366,16 @@ class Stimulus(QMainWindow, MainWindow):
             hovering_index = 0
         if hovering_index >= len(self.groups()):
             hovering_index = len(self.groups()) - 1
-        if self.verticalLayout.itemAt(hovering_index) is not None and self.verticalLayout.itemAt(hovering_index).widget().id != drag_cache['group'].id:
-            group_id = drag_cache['group'].id
-            name = drag_cache['group'].ui.lineEdit.text()
-            pixmaps = [image.pixmap for image in drag_cache['group'].images()]
-            ids = [image.id for image in drag_cache['group'].images()]
-            files = [image.file for image in drag_cache['group'].images()]
-            images = [ImgFrame(file, id, self, pixmap)
+        if self.verticalLayout.itemAt(hovering_index) is not None and self.verticalLayout.itemAt(hovering_index).widget().id != self.drag_cache.id:
+            group_id = self.drag_cache.id
+            name = self.drag_cache.ui.lineEdit.text()
+            pixmaps = [image.pixmap for image in self.drag_cache.images()]
+            ids = [image.id for image in self.drag_cache.images()]
+            files = [image.file for image in self.drag_cache.images()]
+            images = [ImageFrame(file, id, self, pixmap)
                       for pixmap, id, file in zip(pixmaps, ids, files)]
             for group in self.groups():
-                if group.id == drag_cache['group'].id:
+                if group.id == self.drag_cache.id:
                     self.removeImgGroup(group)
             self.verticalLayout.insertWidget(
                 hovering_index, ImgGroupFrame(self, -1, images, name))
@@ -397,29 +384,29 @@ class Stimulus(QMainWindow, MainWindow):
             for image in group.images():
                 image.master = group
             group.id = group_id
-            drag_cache['group'] = group
+            self.drag_cache = group
 
     def intergroup_show_order(self):
         widgets = list(filter(lambda x: x.isChecked(),
-                              self.frame_4.findChildren(QRadioButton)))
+                              self.frame_4.findChildren(QtWidgets.QRadioButton)))
         if widgets:
             return widgets[0].text()
 
     def intragroup_show_order(self):
         widgets = list(filter(lambda x: x.isChecked(),
-                              self.frame_5.findChildren(QRadioButton)))
+                              self.frame_5.findChildren(QtWidgets.QRadioButton)))
         if widgets:
             return widgets[0].text()
 
     def intergroup_behaviour(self):
         widgets = list(filter(lambda x: x.isChecked(),
-                              self.frame_6.findChildren(QRadioButton)))
+                              self.frame_6.findChildren(QtWidgets.QRadioButton)))
         if widgets:
             return widgets[0].text()
 
     def selection_rate_behaviour(self):
         widgets = list(filter(lambda x: x.isChecked(),
-                              self.frame_7.findChildren(QRadioButton)))
+                              self.frame_7.findChildren(QtWidgets.QRadioButton)))
         if widgets:
             return widgets[0].text()
 
@@ -457,11 +444,11 @@ class Stimulus(QMainWindow, MainWindow):
         return self.comboBox.currentText()
 
     def get_configs(self):
-        if isinstance(self.interaction_key_id, Qt.MouseButton):
+        if isinstance(self.interaction_key_id, QtCore.Qt.MouseButton):
             interaction_key_id = self.interaction_key_id.name
         elif isinstance(self.interaction_key_id, int):
             interaction_key_id = self.interaction_key_id
-        elif isinstance(self.interaction_key_id, QPoint):
+        elif isinstance(self.interaction_key_id, QtCore.QPoint):
             interaction_key_id = (
                 self.interaction_key_id.x(), self.interaction_key_id.y())
         else:
@@ -488,7 +475,7 @@ class Stimulus(QMainWindow, MainWindow):
         }
         return configs
 
-    def mousePressEvent(self, event: QMouseEvent) -> None:
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         super().mousePressEvent(event)
         if self.settinginteractionkey:
             self.pushButton.setDown(False)
@@ -500,7 +487,7 @@ class Stimulus(QMainWindow, MainWindow):
             self.pushButton.setText(text)
             self.interaction_key_id = button
 
-    def wheelEvent(self, event: QWheelEvent) -> None:
+    def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
         super().wheelEvent(event)
         if self.settinginteractionkey:
             self.pushButton.setDown(False)
@@ -533,22 +520,22 @@ class Stimulus(QMainWindow, MainWindow):
             # intergroup show order
             if configs['intergroup_show_order']:
                 filter(lambda x: x.text() == configs['intergroup_show_order'],
-                       self.frame_4.findChildren(QRadioButton)).__next__().setChecked(True)
+                       self.frame_4.findChildren(QtWidgets.QRadioButton)).__next__().setChecked(True)
 
             # intragroup show order
             if configs['intragroup_show_order']:
                 filter(lambda x: x.text() == configs['intragroup_show_order'],
-                       self.frame_5.findChildren(QRadioButton)).__next__().setChecked(True)
+                       self.frame_5.findChildren(QtWidgets.QRadioButton)).__next__().setChecked(True)
 
             # intergroup behaviour
             if configs['intergroup_behaviour']:
                 filter(lambda x: x.text() == configs['intergroup_behaviour'],
-                       self.frame_6.findChildren(QRadioButton)).__next__().setChecked(True)
+                       self.frame_6.findChildren(QtWidgets.QRadioButton)).__next__().setChecked(True)
 
             # selection rate behaviour
             if configs['selection_rate_behaviour']:
                 filter(lambda x: x.text() == configs['selection_rate_behaviour'],
-                       self.frame_7.findChildren(QRadioButton)).__next__().setChecked(True)
+                       self.frame_7.findChildren(QtWidgets.QRadioButton)).__next__().setChecked(True)
 
             # screen
             if configs['screen']:
@@ -578,17 +565,17 @@ class Stimulus(QMainWindow, MainWindow):
             if configs['interaction_key']:
                 if isinstance(configs['interaction_key'], int):
                     self.interaction_key_id = configs['interaction_key']
-                    self.pushButton.setText(QKeySequence(
+                    self.pushButton.setText(QtGui.QKeySequence(
                         configs['interaction_key']).toString())
                 elif isinstance(configs['interaction_key'], list):
-                    self.interaction_key_id = QPoint(
+                    self.interaction_key_id = QtCore.QPoint(
                         0, configs['interaction_key'][1])
                     if sign(self.interaction_key_id.y()) == 1:
                         self.pushButton.setText('ScrollUp')
                     else:
                         self.pushButton.setText('ScrollDown')
                 else:
-                    self.interaction_key_id = Qt.MouseButton[configs['interaction_key']]
+                    self.interaction_key_id = QtCore.Qt.MouseButton[configs['interaction_key']]
                     self.pushButton.setText(configs['interaction_key'])
 
             # skip on click
@@ -599,7 +586,7 @@ class Stimulus(QMainWindow, MainWindow):
             if configs['groups']:
                 for group in configs['groups']:
                     images = [
-                        ImgFrame(Path(configs['groups'][group]['images'][i]['file']), int(i), rate=configs['groups'][group]['images'][i]['rate']) for i in configs['groups'][group]['images']
+                        ImageFrame(Path(configs['groups'][group]['images'][i]['file']), int(i), rate=configs['groups'][group]['images'][i]['rate']) for i in configs['groups'][group]['images']
                     ]
                     self.addImgGroup(
                         images, configs['groups'][group]['name'], int(group), configs['groups'][group]['rate'])
@@ -611,7 +598,7 @@ class Stimulus(QMainWindow, MainWindow):
                 self.load_settings(home_dir/'.Stimulus/default.json')
 
     def saveSettingsEvent(self, event):
-        path = QFileDialog.getSaveFileName(
+        path = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Save Settings', '', '*.json')
         if len(path) > 0:
             path = path[0]
@@ -620,7 +607,7 @@ class Stimulus(QMainWindow, MainWindow):
             self.save_settings(path)
 
     def loadSettingsEvent(self, event):
-        path = QFileDialog.getOpenFileName(
+        path = QtWidgets.QFileDialog.getOpenFileName(
             self, 'Load Settings', '', '*.json')
         if os.path.isfile(path[0]):
             for group in self.groups():
@@ -678,7 +665,7 @@ class Stimulus(QMainWindow, MainWindow):
             text += "When intergroup behaviour is set to select a new group on depletion of the current, selection rate behaviour can't be probabilistic.\n"
         text = text.strip('\n')
         if text:
-            QMessageBox.warning(self, 'Error', text)
+            QtWidgets.QMessageBox.warning(self, 'Error', text)
             return False
         return True
 
@@ -703,25 +690,24 @@ class Stimulus(QMainWindow, MainWindow):
                 'skip_on_click': self.skip_on_click(),
                 'screen': self.screen_()
             }
-            ShowWindow(**args)
+            show_window = ShowWindow(**args)
+            show_window.deleteLater()
 
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     window = Stimulus()
     window.show()
     app.exec()
 
-# TODO: TIRAR VARIAVEIS GLOBAIS
-# TODO: TIRAR VALORES HARD-CODED
-# TODO: DEIXAR DICIONARIO COMO VARIAVEL NORMAL, DESFAZER DICIONARIO
 # TODO: DEIXAR O CODIGO MAIS LIMPO
 # TODO: FAZER CLASSES COM HERANÇA
 # TODO: CONSERTAR TAB
-# TODO: ADICIONAR SUPORTE PRA TELA SECUNDÁRIA
 # TODO: ESTILIZAÇÂO COM CSS
 # TODO: MUDAR NOME DO SCROLL NAS SAVE FILES
 # TODO: ADICIONAR SUPORTE AS TECLAS DIRECIONAIS
 # TODO: AUMENTAR O TAMANHO DO FRAME ESQUERDO QUANDO APARECER A SCROLLBAR
 # TODO: PERMITIR RATE = 0
 # TODO: JANELA DE MONITORAMENTO
+# TODO: DRAG SCROLL
+# TODO: FIX GUI FREEZING
