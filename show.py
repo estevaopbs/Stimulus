@@ -162,8 +162,9 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
     def save_report(self) -> None:
         path = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Save Data Report', '', 'JSON (*.json)')[0]
-        self.id = path.split('/')[-1].split('.')[0]
-        if not path.endswith('.json'):
-            path += '.json'
-        with open(path, 'w') as f:
-            json.dump(self.get_report(), f, indent=4)
+        if path:
+            self.id = path.split('/')[-1].split('.')[0]
+            if not path.endswith('.json'):
+                path += '.json'
+            with open(path, 'w') as f:
+                json.dump(self.get_report(), f, indent=4)

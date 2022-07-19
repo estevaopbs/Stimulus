@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any, Tuple, Generator
 from PyQt6 import QtCore, QtGui, QtWidgets
 import numpy as np
 from templates.ImgGroup.ImgGroup import Ui_Frame as ImageGroup
@@ -14,18 +14,18 @@ from select_images import SelectImages
 from itertools import chain
 from show import ShowWindow
 from PIL.ImageQt import ImageQt
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 
 def is_image(path: Path) -> bool:
     try:
         Image.open(path)
         return True
-    except:
+    except UnidentifiedImageError:
         return False
 
 
-def get_sys() -> str:
+def get_sys() -> str | None:
     match sys.platform:
         case 'linux':
             return 'linux'
@@ -33,18 +33,21 @@ def get_sys() -> str:
             return 'linux'
         case 'win32':
             return 'windows'
+        case _:
+            return None
 
 
-def get_id(n: int = 0) -> int:
+def get_id(n: int = 0) -> Generator[int, None, None]:
     while True:
         yield n
         n += 1
 
 
 class ImageFrame(QtWidgets.QFrame):
-    def __init__(self, file: Path, id: int, master: ImageGroupFrame = None,
-                 pixmap: QtGui.QPixmap = None, pil_image: ImageQt = None,
-                 rate: int = 1) -> None:
+    def __init__(self, file: Path, id: int,
+                 master: ImageGroupFrame | None = None,
+                 pixmap: QtGui.QPixmap = None,
+                 pil_image: ImageQt | None = None, rate: int = 1) -> None:
         super().__init__()
         self.ui = ImageLabel()
         self.ui.setupUi(self)
