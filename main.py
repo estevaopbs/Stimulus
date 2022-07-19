@@ -1,4 +1,6 @@
+from __future__ import annotations
 from pathlib import Path
+from typing import Any
 from PyQt6 import QtCore, QtGui, QtWidgets
 import numpy as np
 from templates.ImgGroup.ImgGroup import Ui_Frame as ImageGroup
@@ -15,7 +17,7 @@ from PIL.ImageQt import ImageQt
 from PIL import Image
 
 
-def is_image(path):
+def is_image(path: Path) -> bool:
     try:
         Image.open(path)
         return True
@@ -23,7 +25,7 @@ def is_image(path):
         return False
 
 
-def get_sys():
+def get_sys() -> str:
     match sys.platform:
         case 'linux':
             return 'linux'
@@ -33,19 +35,22 @@ def get_sys():
             return 'windows'
 
 
-def get_id(n=0):
+def get_id(n: int = 0) -> int:
     while True:
         yield n
         n += 1
 
 
 class ImageFrame(QtWidgets.QFrame):
-    def __init__(self, file, id, master=None, pixmap=None, rate=1):
+    def __init__(self, file: Path, id: int, master: ImageGroupFrame = None,
+                 pixmap: QtGui.QPixmap = None, pil_image: ImageQt = None,
+                 rate: int = 1) -> None:
         super().__init__()
         self.ui = ImageLabel()
         self.ui.setupUi(self)
         self.master = master
         self.pixmap = pixmap
+        self.pil_image = pil_image
         self.file = file
         self.id = id
         self.setImg()
@@ -56,33 +61,34 @@ class ImageFrame(QtWidgets.QFrame):
         self.ui.spinBox.setRange(1, 999999)
         self.ui.spinBox.setValue(rate)
 
-    def group_name(self):
+    def group_name(self) -> str:
         return self.master.name
 
-    def rate(self):
+    def rate(self) -> int:
         return self.ui.spinBox.value()
 
-    def get_configs(self):
+    def get_configs(self) -> dict[str, str]:
         return {
             'file': str(self.file),
             'rate': self.rate()
         }
 
-    def setImg(self):
+    def setImg(self) -> None:
         if not self.pixmap:
-            self.pil_image = ImageQt(self.file)
+            if self.pil_image is None:
+                self.pil_image = ImageQt(self.file)
             self.pixmap = QtGui.QPixmap.fromImage(self.pil_image)
         self.ui.label.setPixmap(self.pixmap)
 
-    def enterEvent(self, event) -> None:
+    def enterEvent(self, event: Any) -> None:
         self.ui.pushButton.setVisible(True)
         self.ui.spinBox.setVisible(True)
 
-    def leaveEvent(self, a0) -> None:
+    def leaveEvent(self, event: Any) -> None:
         self.ui.pushButton.setVisible(False)
         self.ui.spinBox.setVisible(False)
 
-    def removeEvent(self, event) -> None:
+    def removeEvent(self, event: Any) -> None:
         master_images = self.master.images()
         if self != master_images[-1]:
             master_images[master_images.index(self) + 1].enterEvent(None)
@@ -91,7 +97,7 @@ class ImageFrame(QtWidgets.QFrame):
     def delete(self):
         self.master.removeImg(self)
 
-    def mouseMoveEvent(self, event) -> None:
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
         if event.buttons() & QtCore.Qt.MouseButton.LeftButton:
             self.master.master.drag_cache = self
             drag = QtGui.QDrag(self)
@@ -109,7 +115,7 @@ class ImageFrame(QtWidgets.QFrame):
             drag.exec()
 
 
-class ImgGroupFrame(QtWidgets.QFrame, QtWidgets.QApplication):
+class ImageGroupFrame(QtWidgets.QFrame, QtWidgets.QApplication):
     def __init__(self, master, id, images=[], name='') -> None:
         super().__init__()
         self.ui = ImageGroup()
@@ -192,7 +198,10 @@ class ImgGroupFrame(QtWidgets.QFrame, QtWidgets.QApplication):
         if len(self.images()) == 0:
             self.ui.horizontalLayout_2.insertWidget(
                 0, ImageFrame(self.master.drag_cache.file,
-                              self.master.drag_cache.id, self, self.master.drag_cache.pixmap,
+                              self.master.drag_cache.id,
+                              self,
+                              self.master.drag_cache.pixmap,
+                              self.master.drag_cache.pil_image,
                               self.master.drag_cache.rate()))
             return
         absolute_pos = event.position().x()
@@ -209,7 +218,10 @@ class ImgGroupFrame(QtWidgets.QFrame, QtWidgets.QApplication):
                     self.removeImg(image)
             self.ui.horizontalLayout_2.insertWidget(
                 hovering_index, ImageFrame(self.master.drag_cache.file,
-                                           self.master.drag_cache.id, self, self.master.drag_cache.pixmap,
+                                           self.master.drag_cache.id,
+                                           self,
+                                           self.master.drag_cache.pixmap,
+                                           self.master.drag_cache.pil_image,
                                            self.master.drag_cache.rate()))
 
     def mouseMoveEvent(self, event) -> None:
@@ -337,22 +349,22 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
     def addImgGroup(self, images=[], name='', id=None, rate=1):
         if id == None:
             id = self.get_id()
-        group = ImgGroupFrame(self, id, images, name)
+        group = ImageGroupFrame(self, id, images, name)
         self.verticalLayout.insertWidget(
             self.verticalLayout.count() - 2, group)
 
-    def removeImgGroup(self, group: ImgGroupFrame) -> None:
+    def removeImgGroup(self, group: ImageGroupFrame) -> None:
         group.hide()
         for image in group.images():
             group.removeImg(image)
         self.verticalLayout.removeWidget(group)
 
-    def removeImgGroupBtn(self, group: ImgGroupFrame) -> None:
+    def removeImgGroupBtn(self, group: ImageGroupFrame) -> None:
         self.removeImgGroup(group)
         group.deleteLater()
 
     def scrollArea2_dragEnterEvent(self, event):
-        if isinstance(self.drag_cache, ImgGroupFrame):
+        if isinstance(self.drag_cache, ImageGroupFrame):
             event.accept()
         else:
             event.ignore()
@@ -370,15 +382,18 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
             group_id = self.drag_cache.id
             name = self.drag_cache.ui.lineEdit.text()
             pixmaps = [image.pixmap for image in self.drag_cache.images()]
+            pil_images = [
+                image.pil_image for image in self.drag_cache.images()]
             ids = [image.id for image in self.drag_cache.images()]
             files = [image.file for image in self.drag_cache.images()]
-            images = [ImageFrame(file, id, self, pixmap)
-                      for pixmap, id, file in zip(pixmaps, ids, files)]
+            rates = [image.rate() for image in self.drag_cache.images()]
+            images = [ImageFrame(file, id, self, pixmap, pil_image, rate)
+                      for pixmap, pil_image, id, file, rate in zip(pixmaps, pil_images, ids, files, rates)]
             for group in self.groups():
                 if group.id == self.drag_cache.id:
                     self.removeImgGroup(group)
             self.verticalLayout.insertWidget(
-                hovering_index, ImgGroupFrame(self, -1, images, name))
+                hovering_index, ImageGroupFrame(self, -1, images, name))
             group = list(filter(lambda group: group.id ==
                                 -1, self.groups()))[0]
             for image in group.images():
