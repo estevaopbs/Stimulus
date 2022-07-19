@@ -14,9 +14,19 @@ import json
 from select_images import SelectImages
 from itertools import chain
 from show import ShowWindow
+from PIL.ImageQt import ImageQt
+from PIL import Image
 
 
 drag_cache = None
+
+
+def is_image(path):
+    try:
+        Image.open(path)
+        return True
+    except:
+        return False
 
 
 def get_sys():
@@ -60,13 +70,14 @@ class ImgFrame(QFrame):
 
     def get_configs(self):
         return {
-            'file': self.file,
-            'rate': self.ui.spinBox.value()
+            'file': str(self.file),
+            'rate': self.rate()
         }
 
     def setImg(self):
         if not self.pixmap:
-            self.pixmap = QPixmap(self.file)
+            self.pil_image = ImageQt(self.file)
+            self.pixmap = QPixmap.fromImage(self.pil_image)
         self.ui.label.setPixmap(self.pixmap)
 
     def enterEvent(self, event) -> None:
@@ -154,41 +165,21 @@ class ImgGroupFrame(QFrame, QApplication):
             self.ui.horizontalLayout_2.count() - 1, image)
 
     def addImgEvent(self, event) -> None:
-        match get_sys():
-            case 'linux':
-                files = QFileDialog.getOpenFileUrls(
-                    self, "Open File", QUrl("."),
-                    "Images (*.png *.jpg *.jpeg *.bmp *.gif, *.rgb, *.pgm, *.ppm, *.tiff, *.rast, *.xbm, *.webp, *.exr)")[0]
-                for file in files:
-                    file_ = f'{file.toString(QUrl.UrlFormattingOption.RemoveScheme)}'
-                    self.addImg(ImgFrame(file_, self.master.get_id(), self))
-            case 'windows':
-                files = QFileDialog.getOpenFileUrls(
-                    self, "Open File", QUrl("."), "Images (*.png)")[0]
-                for file in files:
-                    file_ = f'{file.toString(QUrl.UrlFormattingOption.RemoveScheme)}'
-                    file_ = file_.replace('///', '')
-                    self.addImg(ImgFrame(file_, self.master.get_id(), self))
-            case _:
-                return
+        files = QFileDialog.getOpenFileUrls(
+            self, "Open File", QUrl("."),
+            "Images (*.png *.jpg *.jpeg *.bmp *.gif, *.rgb, *.pgm, *.ppm, *.tiff, *.rast, *.xbm, *.exr, *.webp)")[0]
+        for file in files:
+            file_ = Path(file.path())
+            if is_image(file_):
+                self.addImg(ImgFrame(file_, self.master.get_id(), self))
 
     def addFolderEvent(self, event) -> None:
         dir = QFileDialog.getExistingDirectory(self, "Open Directory")
         if dir:
-            files = []
-            match get_sys():
-                case 'linux':
-                    for file in [os.path.join(dir, file) for file in os.listdir(dir)]:
-                        if os.path.isfile(file) and imghdr.what(file):
-                            files.append(file)
-                case 'windows':
-                    for file in [os.path.join(dir, file) for file in os.listdir(dir)]:
-                        if os.path.isfile(file) and imghdr.what(file) == 'png':
-                            files.append(file)
-                case _:
-                    return
-            for file in files:
-                self.addImg(ImgFrame(file, self.master.get_id(), self))
+            for file in [os.path.join(dir, file) for file in os.listdir(dir)]:
+                file_ = Path(file)
+                if is_image(file_):
+                    self.addImg(ImgFrame(file_, self.master.get_id(), self))
 
     def removeImg(self, img: ImgFrame) -> None:
         img.hide()
@@ -608,7 +599,7 @@ class Stimulus(QMainWindow, MainWindow):
             if configs['groups']:
                 for group in configs['groups']:
                     images = [
-                        ImgFrame(configs['groups'][group]['images'][i]['file'], int(i), rate=configs['groups'][group]['images'][i]['rate']) for i in configs['groups'][group]['images']
+                        ImgFrame(Path(configs['groups'][group]['images'][i]['file']), int(i), rate=configs['groups'][group]['images'][i]['rate']) for i in configs['groups'][group]['images']
                     ]
                     self.addImgGroup(
                         images, configs['groups'][group]['name'], int(group), configs['groups'][group]['rate'])
@@ -631,7 +622,7 @@ class Stimulus(QMainWindow, MainWindow):
     def loadSettingsEvent(self, event):
         path = QFileDialog.getOpenFileName(
             self, 'Load Settings', '', '*.json')
-        if len(path) > 0:
+        if os.path.isfile(path[0]):
             for group in self.groups():
                 self.removeImgGroup(group)
             self.load_settings(path[0])
@@ -702,7 +693,7 @@ class Stimulus(QMainWindow, MainWindow):
             args = {
                 'master': self,
                 'images': [{
-                    'file': image.file,
+                    'file': str(image.file),
                     'group_name': image.group_name(),
                     'pixmap': image.pixmap
                 } for image in images],
