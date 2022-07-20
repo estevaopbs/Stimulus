@@ -701,7 +701,7 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
             images = []
             for image in SelectImages(**self.get_configs()).run():
                 images.append(
-                    next(filter(lambda image: image.id == image.id, all_images)))
+                    next(filter(lambda i: i.id == image.id, all_images)))
             args = {
                 'master': self,
                 'images': [{
