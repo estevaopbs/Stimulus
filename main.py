@@ -254,7 +254,7 @@ class ImageGroupFrame(QtWidgets.QFrame, QtWidgets.QApplication):
 
 
 class Stimulus(QtWidgets.QMainWindow, MainWindow):
-    def __init__(self, parent=None) -> None:
+    def __init__(self, parent: None = None) -> None:
         super().__init__(parent)
         super().setupUi(self)
         self.ids_generator = get_id()
@@ -730,3 +730,4 @@ if __name__ == '__main__':
 # TODO: JANELA DE MONITORAMENTO
 # TODO: DRAG SCROLL
 # TODO: FIX GUI FREEZING
+# TODO: PARENTS
