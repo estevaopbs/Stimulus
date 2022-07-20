@@ -3,9 +3,9 @@ from pathlib import Path
 from typing import Any, Tuple, Generator
 from PyQt6 import QtCore, QtGui, QtWidgets
 import numpy as np
-from templates.ImgGroup.ImgGroup import Ui_Frame as ImageGroup
+from templates.ImageGroup.ImageGroup import Ui_Frame as ImageGroup
 from templates.MainWindow.MainWindow import Ui_MainWindow as MainWindow
-from templates.Img.Img import Ui_Form as ImageLabel
+from templates.Image.Image import Ui_Form as ImageLabel
 import sys
 import os
 from math import floor
@@ -56,7 +56,7 @@ class ImageFrame(QtWidgets.QFrame):
         self.pil_image = pil_image
         self.file = file
         self.id = id
-        self.setImg()
+        self.setImage()
         self.ui.pushButton.setVisible(False)
         self.ui.spinBox.setVisible(False)
         self.ui.pushButton.clicked.connect(self.removeEvent)
@@ -76,7 +76,7 @@ class ImageFrame(QtWidgets.QFrame):
             'rate': self.rate()
         }
 
-    def setImg(self) -> None:
+    def setImage(self) -> None:
         if not self.pixmap:
             if self.pil_image is None:
                 self.pil_image = ImageQt(self.file)
@@ -98,7 +98,7 @@ class ImageFrame(QtWidgets.QFrame):
         self.delete()
 
     def delete(self):
-        self.master.removeImg(self)
+        self.master.removeImage(self)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
         if event.buttons() & QtCore.Qt.MouseButton.LeftButton:
@@ -131,7 +131,7 @@ class ImageGroupFrame(QtWidgets.QFrame, QtWidgets.QApplication):
         self.ui.pushButton_2.setText("Folder")
         self.ui.pushButton_3.setText("Delete")
         self.ui.pushButton_3.clicked.connect(self.delete)
-        self.ui.pushButton.clicked.connect(self.addImgEvent)
+        self.ui.pushButton.clicked.connect(self.addImageEvent)
         self.ui.pushButton_2.clicked.connect(self.addFolderEvent)
         self.setAcceptDrops(True)
         for n, image in enumerate(images):
@@ -158,20 +158,20 @@ class ImageGroupFrame(QtWidgets.QFrame, QtWidgets.QApplication):
         return [self.ui.horizontalLayout_2.itemAt(i).widget() for i in range(self.ui.horizontalLayout_2.count() - 1)]
 
     def delete(self, event: Any) -> None:
-        self.master.removeImgGroupBtn(self)
+        self.master.removeImageGroupBtn(self)
 
-    def addImg(self, image: ImageFrame) -> None:
+    def addImage(self, image: ImageFrame) -> None:
         self.ui.horizontalLayout_2.insertWidget(
             self.ui.horizontalLayout_2.count() - 1, image)
 
-    def addImgEvent(self, event: Any) -> None:
+    def addImageEvent(self, event: Any) -> None:
         files = QtWidgets.QFileDialog.getOpenFileUrls(
             self, "Open File", QtCore.QUrl("."),
             "Images (*.png *.jpg *.jpeg *.bmp *.gif, *.rgb, *.pgm, *.ppm, *.tiff, *.rast, *.xbm, *.exr, *.webp)")[0]
         for file in files:
             file_ = Path(file.path())
             if is_image(file_):
-                self.addImg(ImageFrame(file_, self.master.get_id(), self))
+                self.addImage(ImageFrame(file_, self.master.get_id(), self))
 
     def addFolderEvent(self, event: Any) -> None:
         dir = QtWidgets.QFileDialog.getExistingDirectory(
@@ -180,11 +180,12 @@ class ImageGroupFrame(QtWidgets.QFrame, QtWidgets.QApplication):
             for file in [os.path.join(dir, file) for file in os.listdir(dir)]:
                 file_ = Path(file)
                 if is_image(file_):
-                    self.addImg(ImageFrame(file_, self.master.get_id(), self))
+                    self.addImage(ImageFrame(
+                        file_, self.master.get_id(), self))
 
-    def removeImg(self, img: ImageFrame) -> None:
-        img.hide()
-        self.ui.horizontalLayout_2.removeWidget(img)
+    def removeImage(self, image: ImageFrame) -> None:
+        image.hide()
+        self.ui.horizontalLayout_2.removeWidget(image)
 
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
         if isinstance(self.master.drag_cache, ImageFrame):
@@ -196,7 +197,7 @@ class ImageGroupFrame(QtWidgets.QFrame, QtWidgets.QApplication):
         if isinstance(self.master.drag_cache, ImageFrame):
             image = list(filter(lambda x: x.id ==
                                 self.master.drag_cache.id, self.images()))[0]
-            self.removeImg(image)
+            self.removeImage(image)
 
     def dragMoveEvent(self, event: QtGui.QDragMoveEvent) -> None:
         if len(self.images()) == 0:
@@ -219,7 +220,7 @@ class ImageGroupFrame(QtWidgets.QFrame, QtWidgets.QApplication):
         if (self.ui.horizontalLayout_2.itemAt(hovering_index) is not None and self.ui.horizontalLayout_2.itemAt(hovering_index).widget().id != self.master.drag_cache.id):
             for image in self.images():
                 if image.id == self.master.drag_cache.id:
-                    self.removeImg(image)
+                    self.removeImage(image)
             self.ui.horizontalLayout_2.insertWidget(
                 hovering_index, ImageFrame(self.master.drag_cache.file,
                                            self.master.drag_cache.id,
@@ -258,7 +259,7 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
         super().setupUi(self)
         self.ids_generator = get_id()
         self.get_id = lambda: next(self.ids_generator)
-        self.pushButton_6.clicked.connect(self.addImgGroupEvent)
+        self.pushButton_6.clicked.connect(self.addImageGroupEvent)
         self.setWindowTitle("Stimulus")
         self.scrollArea_2.setAcceptDrops(True)
         self.scrollArea_2.dragEnterEvent = self.scrollArea2_dragEnterEvent
@@ -297,7 +298,7 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
 
     def clear(self) -> None:
         for group in self.groups():
-            self.removeImgGroup(group)
+            self.removeImageGroup(group)
         for buttonGroup in self.buttonGroups:
             buttonGroup.setExclusive(False)
         for radio_button in [self.radioButton, self.radioButton_2,
@@ -349,24 +350,24 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
     def groups(self) -> list[ImageGroupFrame]:
         return [self.verticalLayout.itemAt(i).widget() for i in range(self.verticalLayout.count() - 2)]
 
-    def addImgGroupEvent(self, event: Any) -> None:
-        self.addImgGroup()
+    def addImageGroupEvent(self, event: Any) -> None:
+        self.addImageGroup()
 
-    def addImgGroup(self, images: list[ImageGroupFrame] = [], name: str = '', id: int | None = None, rate: int = 1) -> None:
+    def addImageGroup(self, images: list[ImageGroupFrame] = [], name: str = '', id: int | None = None, rate: int = 1) -> None:
         if id == None:
             id = self.get_id()
         group = ImageGroupFrame(self, id, images, name)
         self.verticalLayout.insertWidget(
             self.verticalLayout.count() - 2, group)
 
-    def removeImgGroup(self, group: ImageGroupFrame) -> None:
+    def removeImageGroup(self, group: ImageGroupFrame) -> None:
         group.hide()
         for image in group.images():
-            group.removeImg(image)
+            group.removeImage(image)
         self.verticalLayout.removeWidget(group)
 
-    def removeImgGroupBtn(self, group: ImageGroupFrame) -> None:
-        self.removeImgGroup(group)
+    def removeImageGroupBtn(self, group: ImageGroupFrame) -> None:
+        self.removeImageGroup(group)
         group.deleteLater()
 
     def scrollArea2_dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
@@ -397,7 +398,7 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
                       for pixmap, pil_image, id, file, rate in zip(pixmaps, pil_images, ids, files, rates)]
             for group in self.groups():
                 if group.id == self.drag_cache.id:
-                    self.removeImgGroup(group)
+                    self.removeImageGroup(group)
             self.verticalLayout.insertWidget(
                 hovering_index, ImageGroupFrame(self, -1, images, name))
             group = list(filter(lambda group: group.id ==
@@ -478,7 +479,7 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
             interaction_key_id = None
         if self.groups():
             n = self.get_id()
-            self.ids_generator = self.get_id(n)
+            self.ids_generator = get_id(n)
         else:
             n = 0
         configs = {
@@ -611,7 +612,7 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
                     images = [
                         ImageFrame(Path(configs['groups'][group]['images'][i]['file']), int(i), rate=configs['groups'][group]['images'][i]['rate']) for i in configs['groups'][group]['images']
                     ]
-                    self.addImgGroup(
+                    self.addImageGroup(
                         images, configs['groups'][group]['name'], int(group), configs['groups'][group]['rate'])
 
     def load_default(self) -> None:
@@ -635,7 +636,7 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
             self, 'Load Settings', '', '*.json')
         if os.path.isfile(path[0]):
             for group in self.groups():
-                self.removeImgGroup(group)
+                self.removeImageGroup(group)
             self.load_settings(path[0])
 
     def isDeterministicValid(self) -> bool:
@@ -645,7 +646,7 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
         groups_load_unity = self.amount_of_exhibitions() / \
             sum([group.rate() for group in self.groups()])
         for group in self.groups():
-            if (group.rate() * groups_load_unity) % sum([img.rate() for img in group.images()]) != 0:
+            if (group.rate() * groups_load_unity) % sum([image.rate() for image in group.images()]) != 0:
                 return False
         return True
 
@@ -700,7 +701,7 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
             images = []
             for image in SelectImages(**self.get_configs()).run():
                 images.append(
-                    next(filter(lambda img: img.id == image.id, all_images)))
+                    next(filter(lambda image: image.id == image.id, all_images)))
             args = {
                 'master': self,
                 'images': [{
