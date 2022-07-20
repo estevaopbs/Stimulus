@@ -313,6 +313,8 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
         for child in self.findChildren(QtWidgets.QLineEdit):
             child.setText('')
         self.pushButton.setText('Click to set')
+        self.interaction_key_id = None
+        self.ids_generator = get_id()
 
     def InteractionKeyEvent(self, event: Any) -> None:
         self.pushButton.setDown(True)
@@ -475,8 +477,8 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
         else:
             interaction_key_id = None
         if self.groups():
-            n = max([group.id for group in self.groups(
-            )] + list(chain(*[[image.id for image in group.images()] for group in self.groups()])))
+            n = self.get_id()
+            self.ids_generator = self.get_id(n)
         else:
             n = 0
         configs = {
@@ -622,10 +624,11 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
         path = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Save Settings', '', '*.json')
         if len(path) > 0:
-            path = path[0]
-            if not path.endswith('.json'):
-                path += '.json'
-            self.save_settings(path)
+            if path[0]:
+                path = path[0]
+                if not path.endswith('.json'):
+                    path += '.json'
+                self.save_settings(Path(path))
 
     def loadSettingsEvent(self, event: Any) -> None:
         path = QtWidgets.QFileDialog.getOpenFileName(
