@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import Any, Tuple, Generator
+from typing import Any, Generator, Optional
 from PyQt6 import QtCore, QtGui, QtWidgets
 import numpy as np
 from templates.ImageGroup.ImageGroup import Ui_Frame as ImageGroup
@@ -45,9 +45,9 @@ def get_id(n: int = 0) -> Generator[int, None, None]:
 
 class ImageFrame(QtWidgets.QFrame):
     def __init__(self, file: Path, id: int,
-                 master: ImageGroupFrame | None = None,
-                 pixmap: QtGui.QPixmap = None,
-                 pil_image: ImageQt | None = None, rate: int = 1) -> None:
+                 master: Optional[ImageGroupFrame] = None,
+                 pixmap: Optional[QtGui.QPixmap] = None,
+                 pil_image: Optional[ImageQt] = None, rate: int = 1) -> None:
         super().__init__()
         self.ui = ImageLabel()
         self.ui.setupUi(self)
@@ -70,7 +70,7 @@ class ImageFrame(QtWidgets.QFrame):
     def rate(self) -> int:
         return self.ui.spinBox.value()
 
-    def get_configs(self) -> dict[str, str]:
+    def get_configs(self) -> dict[str, Any]:
         return {
             'file': str(self.file),
             'rate': self.rate()
@@ -147,7 +147,7 @@ class ImageGroupFrame(QtWidgets.QFrame, QtWidgets.QApplication):
     def name(self) -> str:
         return self.ui.lineEdit.text()
 
-    def get_configs(self) -> dict[str, str | int | dict[int, dict[str, str]]]:
+    def get_configs(self) -> dict[str, Any]:
         return {
             'name': self.name,
             'rate': self.ui.spinBox.value(),
@@ -353,7 +353,7 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
     def addImageGroupEvent(self, event: Any) -> None:
         self.addImageGroup()
 
-    def addImageGroup(self, images: list[ImageGroupFrame] = [], name: str = '', id: int | None = None, rate: int = 1) -> None:
+    def addImageGroup(self, images: list[ImageGroupFrame] = [], name: str = '', id: Optional[int] = None, rate: int = 1) -> None:
         if id == None:
             id = self.get_id()
         group = ImageGroupFrame(self, id, images, name)
@@ -465,9 +465,7 @@ class Stimulus(QtWidgets.QMainWindow, MainWindow):
     def screen_(self) -> str:
         return self.comboBox.currentText()
 
-    def get_configs(self) -> dict[str, dict[int, dict[str, str | int |
-                                                      dict[int, dict[str, str]]]] | str |
-                                  int | float | Tuple[int, int] | None]:
+    def get_configs(self) -> dict[str, Any]:
         if isinstance(self.interaction_key_id, QtCore.Qt.MouseButton):
             interaction_key_id = self.interaction_key_id.name
         elif isinstance(self.interaction_key_id, int):

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Any
 from PyQt6 import QtGui, QtCore, QtWidgets
 from templates.Show.Show import Ui_MainWindow as Show
 from datetime import datetime
@@ -7,7 +8,7 @@ import json
 
 
 class ShowWindow(QtWidgets.QMainWindow, Show):
-    def __init__(self, master: Stimulus, images: list[ImageFrame],
+    def __init__(self, master: Stimulus, images: list[dict[str, Any]],
                  show_time: int, interval_time: int,
                  interaction_key: QtCore.QPoint | QtCore.Qt.MouseButton | int,
                  skip_on_click: bool, screen: str,
@@ -39,9 +40,9 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
             self.interactionEvent = self.skipEvent
         else:
             self.interactionEvent = self._interactionEvent
-        self.times = []
-        self.relative_times = []
-        self.clicked_images = []
+        self.times: list[float] = []
+        self.relative_times: list[float] = []
+        self.clicked_images: list[int] = []
         self.clicked = False
         self.skip = False
         self.running = False
@@ -110,7 +111,7 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
                 now - self.relative_start_time - self.interval_time)
             self.clicked = True
 
-    def get_report(self) -> dict[str, int | list[dict[str, str]] | float | str]:
+    def get_report(self) -> dict[str, Any]:
         report = {
             'id': self.id,
             'images': [
