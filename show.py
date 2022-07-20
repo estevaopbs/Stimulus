@@ -21,8 +21,8 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
         self.showFullScreen()
         self.master = master
         self.images = images
-        self.show_time = show_time/1000
-        self.interval_time = interval_time/1000
+        self.show_time = show_time / 1000
+        self.interval_time = interval_time / 1000
         self.interaction_key = interaction_key
         self.screen_ = next(filter(lambda x: x.name() == screen,
                             QtWidgets.QApplication.screens()))
@@ -124,7 +124,9 @@ class ShowWindow(QtWidgets.QMainWindow, Show):
             'times': self.times,
             'relative_times': self.relative_times,
             'clicked_images': self.clicked_images,
-            'datetime': datetime.strftime(datetime.now(), '%d/%m/%Y %H:%M:%S')
+            'datetime': datetime.strftime(datetime.now(), '%d/%m/%Y %H:%M:%S'),
+            'show_time': self.show_time * 1000,
+            'interval_time': self.interval_time * 1000
         }
         return report
 
